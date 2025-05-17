@@ -1,0 +1,307 @@
+[
+	{
+		"teacher": "KKC",
+		"coveringNumber": -9.5,
+		"net": 33.5
+	},
+	{
+		"teacher": "TKK",
+		"coveringNumber": 11,
+		"net": 31
+	},
+	{
+		"teacher": "LSH",
+		"coveringNumber": 11,
+		"net": 34
+	},
+	{
+		"teacher": "YTL",
+		"coveringNumber": 7.5,
+		"net": 24.5
+	},
+	{
+		"teacher": "MLT",
+		"coveringNumber": 12,
+		"net": 16
+	},
+	{
+		"teacher": "YPT",
+		"coveringNumber": 12,
+		"net": 16
+	},
+	{
+		"teacher": "CKA",
+		"coveringNumber": 11.5,
+		"net": 20.5
+	},
+	{
+		"teacher": "MCW",
+		"coveringNumber": 12.5,
+		"net": 21.5
+	},
+	{
+		"teacher": "OMK",
+		"coveringNumber": 11.5,
+		"net": 19.5
+	},
+	{
+		"teacher": "YMM",
+		"coveringNumber": 12,
+		"net": 20
+	},
+	{
+		"teacher": "MC",
+		"coveringNumber": 12.5,
+		"net": 19.5
+	},
+	{
+		"teacher": "SKL",
+		"coveringNumber": 11.5,
+		"net": 17.5
+	},
+	{
+		"teacher": "CL",
+		"coveringNumber": 13.5,
+		"net": 18.5
+	},
+	{
+		"teacher": "KYL",
+		"coveringNumber": 12.5,
+		"net": 11.5
+	},
+	{
+		"teacher": "LCL",
+		"coveringNumber": 11.5,
+		"net": 10.5
+	},
+	{
+		"teacher": "SMT",
+		"coveringNumber": 12,
+		"net": 11
+	},
+	{
+		"teacher": "YIL",
+		"coveringNumber": 12,
+		"net": 11
+	},
+	{
+		"teacher": "CHM",
+		"coveringNumber": 12.5,
+		"net": 10.5
+	},
+	{
+		"teacher": "HYL",
+		"coveringNumber": 11.5,
+		"net": 15.5
+	},
+	{
+		"teacher": "JC",
+		"coveringNumber": 12,
+		"net": 16
+	},
+	{
+		"teacher": "NMY",
+		"coveringNumber": 12.5,
+		"net": 10.5
+	},
+	{
+		"teacher": "SYY",
+		"coveringNumber": 12.5,
+		"net": 16.5
+	},
+	{
+		"teacher": "YML",
+		"coveringNumber": 12.5,
+		"net": 10.5
+	},
+	{
+		"teacher": "SCY",
+		"coveringNumber": 14,
+		"net": 17
+	},
+	{
+		"teacher": "HYH",
+		"coveringNumber": 23,
+		"net": 7
+	},
+	{
+		"teacher": "JT",
+		"coveringNumber": 12.5,
+		"net": 14.5
+	},
+	{
+		"teacher": "KMC",
+		"coveringNumber": 10.5,
+		"net": 12.5
+	},
+	{
+		"teacher": "MKC",
+		"coveringNumber": 12,
+		"net": 8
+	},
+	{
+		"teacher": "SYS",
+		"coveringNumber": 12,
+		"net": 8
+	},
+	{
+		"teacher": "WTN",
+		"coveringNumber": 11.5,
+		"net": 7.5
+	},
+	{
+		"teacher": "HYC",
+		"coveringNumber": 11.5,
+		"net": 12.5
+	},
+	{
+		"teacher": "JY",
+		"coveringNumber": 14,
+		"net": 6
+	},
+	{
+		"teacher": "KL",
+		"coveringNumber": 10.5,
+		"net": 11.5
+	},
+	{
+		"teacher": "WYT",
+		"coveringNumber": 14.5,
+		"net": 9.5
+	},
+	{
+		"teacher": "YNT",
+		"coveringNumber": 12.5,
+		"net": 13.5
+	},
+	{
+		"teacher": "CSC",
+		"coveringNumber": 11.5,
+		"net": 11.5
+	},
+	{
+		"teacher": "CTT",
+		"coveringNumber": 15,
+		"net": 0
+	},
+	{
+		"teacher": "KPF",
+		"coveringNumber": 12.5,
+		"net": 6.5
+	},
+	{
+		"teacher": "KYC",
+		"coveringNumber": 14.5,
+		"net": 8.5
+	},
+	{
+		"teacher": "PUL",
+		"coveringNumber": 11.5,
+		"net": 11.5
+	},
+	{
+		"teacher": "EL",
+		"coveringNumber": 12,
+		"net": 5
+	},
+	{
+		"teacher": "KKL",
+		"coveringNumber": 12,
+		"net": 11
+	},
+	{
+		"teacher": "CLL",
+		"coveringNumber": 13,
+		"net": 5
+	},
+	{
+		"teacher": "HPP",
+		"coveringNumber": 13,
+		"net": 11
+	},
+	{
+		"teacher": "PYL",
+		"coveringNumber": 23,
+		"net": 0
+	},
+	{
+		"teacher": "SSL",
+		"coveringNumber": 11.5,
+		"net": 9.5
+	},
+	{
+		"teacher": "TCL",
+		"coveringNumber": 11.5,
+		"net": 3.5
+	},
+	{
+		"teacher": "YLC",
+		"coveringNumber": 11.5,
+		"net": 3.5
+	},
+	{
+		"teacher": "SFS",
+		"coveringNumber": 13,
+		"net": 4
+	},
+	{
+		"teacher": "KML",
+		"coveringNumber": 13,
+		"net": 3
+	},
+	{
+		"teacher": "SCC",
+		"coveringNumber": 13,
+		"net": 3
+	},
+	{
+		"teacher": "BL",
+		"coveringNumber": 13,
+		"net": 8
+	},
+	{
+		"teacher": "HKY",
+		"coveringNumber": 11.5,
+		"net": 6.5
+	},
+	{
+		"teacher": "SS",
+		"coveringNumber": 11.5,
+		"net": 6.5
+	},
+	{
+		"teacher": "YCL",
+		"coveringNumber": 14,
+		"net": 6
+	},
+	{
+		"teacher": "LL",
+		"coveringNumber": 11.5,
+		"net": 1.5
+	},
+	{
+		"teacher": "KKP",
+		"coveringNumber": 13,
+		"net": 2
+	},
+	{
+		"teacher": "MYT",
+		"coveringNumber": 12,
+		"net": 0
+	},
+	{
+		"teacher": "OLN",
+		"coveringNumber": 83,
+		"net": 0
+	},
+	{
+		"teacher": "WYY",
+		"coveringNumber": 113,
+		"net": 0
+	},
+	{
+		"teacher": "WHS",
+		"coveringNumber": 118,
+		"net": 4
+	}
+]

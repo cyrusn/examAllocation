@@ -1,0 +1,99 @@
+<!doctype html>
+<html
+  lang="en"
+  x-data="documentData"
+  :class='isLightTheme ? "theme-light" : "theme-dark"'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Cache-Control"
+      content="no-cache, no-store, must-revalidate"
+    />
+    <meta http-equiv="Expires" content="0" />
+    <title>Exam Schedule</title>
+    <link rel="shortcut icon" href="#" />
+    <script
+      defer
+      src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+    <script src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css"
+    />
+  </head>
+
+  <body>
+    <div class="container is-widescreen pt-4 px-1">
+      <div class="is-flex is-justify-content-center">
+        <template x-if="isLightTheme">
+          <img src="./logo.png" class="image" />
+        </template>
+        <template x-if="!isLightTheme">
+          <img src="./logo_dark.png" class="image" />
+        </template>
+      </div>
+      <h1
+        class="title is-size-3-desktop is-size-5-mobile has-text-centered mt-4"
+      ></h1>
+
+      <div class="field horizontal">
+        <div class="field-body">
+          <div class="field">
+            <input
+              class="input"
+              type="text"
+              placeholder="Filter by Initial"
+              x-model.debounce="filter"
+              autofocus
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="field is-grouped is-grouped-multiline">
+        <div class="control">
+          <div class="tags has-addons">
+            <span class="tag is-dark">no. of examinations</span>
+            <span
+              class="tag is-info"
+              x-text="filteredExaminations.length"
+            ></span>
+          </div>
+        </div>
+
+        <div class="control">
+          <div class="tags has-addons">
+            <span class="tag is-dark">version</span>
+            <span class="tag is-danger" x-text="version"></span>
+          </div>
+        </div>
+
+        <div class="control">
+          <div class="tags has-addons">
+            <span class="tag is-dark">Theme</span>
+            <button class="tag" @click="toggleTheme">
+              <template x-if="isLightTheme">
+                <span class="icon has-text-warning">
+                  <i class="fas fa-sun"></i>
+                </span>
+              </template>
+              <template x-if="!isLightTheme">
+                <span class="icon has-text-link">
+                  <i class="fas fa-moon"></i>
+                </span>
+              </template>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container mb-6">
+        <div x-html="table"></div>
+      </div>
+    </div>
+  </body>
+  <script src="./alpine.js?v=0.0.0"></script>
+</html>
