@@ -98,7 +98,7 @@ document.addEventListener('alpine:init', () => {
             return `
 <td>${classcode}</td>
   <td>${title}</td>
-  <td>${location}</td> <td>${duration}mins</td>
+  <td>${location || ''}</td> <td>${duration}mins</td>
   <td width='40%'> 
 <span class='has-text-info'> ${invigilators.join(', ')}</span>
   </td>`

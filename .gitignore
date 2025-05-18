@@ -137,3 +137,6 @@ dist
 .DS_Store
 .env.key.json
 data/*
+out/*.json
+out/*.csv
+

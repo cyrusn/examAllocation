@@ -1,16 +1,35 @@
 const _ = require('lodash')
 
 const { DateTime, Duration, Interval } = require('luxon')
+const GENERAL_DUTIES = ['SB', 'G']
+const DC_TEAM_MEMBERS = ['JT', 'MKC', 'HYH', 'WTN', 'CSC']
+const EXCLUSED_STANDBY_TEACHERS = ['OLN', 'WHS', 'WYY', 'EC', 'KYY', 'CKL']
 
-function updateCoveringNumber(list, teacher, duration) {
+function updateCoveringNumber(list, teacher, duration, isGeneralDuty) {
   const found = list.find((l) => l.teacher == teacher)
   const addedCoveringNumber = Math.max(
     0.5,
     Math.round((parseInt(duration) * 2) / 55) / 2
   )
-  if (found) {
+
+  if (!found) {
+    list.push({
+      teacher,
+      coveringNumber: addedCoveringNumber,
+      totalInvigilationTime: addedCoveringNumber,
+      generalDuty: 1,
+      occurrence: 1,
+      isSkip: true
+    })
+    return
+  }
+
+  found.occurrence += 1
+  if (!isGeneralDuty) {
     found.coveringNumber += addedCoveringNumber
-    found.net += addedCoveringNumber
+    found.totalInvigilationTime += addedCoveringNumber
+  } else {
+    found.generalDuty += 1
   }
 }
 
@@ -73,7 +92,7 @@ function getOrderedAvailableTeachers(
   const bufferDuration = {
     minutes: 15
   }
-  const { startDateTime, duration } = exam
+  const { startDateTime, duration, classlevel } = exam
 
   const examInterval = Interval.after(
     DateTime.fromISO(startDateTime).minus(bufferDuration),
@@ -82,7 +101,14 @@ function getOrderedAvailableTeachers(
 
   const orderedAvailableTeachers = _(teachers)
     .filter((t) => {
-      const { teacher } = t
+      const { teacher, isSkip, maxLoading, occurrence } = t
+      if (maxLoading && maxLoading <= occurrence) return false
+      if (isSkip != undefined) return false
+      if (
+        GENERAL_DUTIES.includes(classlevel) &&
+        [...EXCLUSED_STANDBY_TEACHERS, ...DC_TEAM_MEMBERS].includes(teacher)
+      )
+        return false
 
       // Check teachers has assigned
       const isAssigned = _.some(assignedExaminiations, (assignedExam) => {
@@ -109,35 +135,32 @@ function getOrderedAvailableTeachers(
           const endDT = DateTime.fromISO(end).plus(bufferDuration)
 
           const unavailableInterval = Interval.fromDateTimes(startDT, endDT)
-          // if (
-          //   exam.title == '英國語文 試卷一 閱讀' &&
-          //   exam.classlevel == 'S5' &&
-          //   teacher == 'KKC'
-          // ) {
-          //   console.log(teacher, unavailableInterval, examInterval)
-          // }
           return examInterval.overlaps(unavailableInterval)
         })
       })
 
-      // if (
-      //   exam.title == '英國語文 試卷一 閱讀' &&
-      //   exam.classlevel == 'S5' &&
-      //   teacher == 'KKC'
-      // ) {
-      //   console.log(teacher, isUnavailable, isAssigned)
-      // }
-
       return !(isUnavailable || isAssigned)
     })
-    .sortBy(['coveringNumber', 'asc'])
     .value()
 
-  return orderedAvailableTeachers
+  if (GENERAL_DUTIES.includes(classlevel)) {
+    return _.sortBy(orderedAvailableTeachers, [
+      'generalDuty',
+      'occurrence',
+      'totalInvigilationTime',
+      'coveringNumber'
+    ])
+  }
+  return _.sortBy(orderedAvailableTeachers, [
+    'coveringNumber',
+    'totalInvigilationTime',
+    'occurrence'
+  ])
 }
 
 module.exports = {
   getOrderedAvailableTeachers,
   updateCoveringNumber,
-  checkAssignedCrashWithUnavailable
+  checkAssignedCrashWithUnavailable,
+  GENERAL_DUTIES
 }
