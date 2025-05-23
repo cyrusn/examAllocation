@@ -92,11 +92,16 @@ function getOrderedAvailableTeachers(
   const bufferDuration = {
     minutes: 15
   }
-  const { startDateTime, duration, classlevel } = exam
+  const { startDateTime, duration, classlevel, classcode } = exam
+
+  const senDuration = Math.ceil(duration * 1.25)
+  const modifiedExamDuration = classcode.match(/^\d{1}S(R|T)?$/)
+    ? senDuration
+    : duration
 
   const examInterval = Interval.after(
     DateTime.fromISO(startDateTime).minus(bufferDuration),
-    Duration.fromObject({ minutes: duration + 30 })
+    Duration.fromObject({ minutes: modifiedExamDuration + 30 })
   )
 
   const orderedAvailableTeachers = _(teachers)
@@ -112,12 +117,17 @@ function getOrderedAvailableTeachers(
 
       // Check teachers has assigned
       const isAssigned = _.some(assignedExaminiations, (assignedExam) => {
-        const { invigilators, startDateTime, duration } = assignedExam
+        const { invigilators, startDateTime, duration, classcode } =
+          assignedExam
         if (!invigilators.includes(teacher)) return false
+        const senDuration = Math.ceil(duration * 1.25)
+        const modifiedExamDuration = classcode.match(/^\d{1}S(R|T)?$/)
+          ? senDuration
+          : duration
 
         const assignedExamInterval = Interval.after(
           DateTime.fromISO(startDateTime).minus(bufferDuration),
-          Duration.fromObject({ minutes: duration + 30 })
+          Duration.fromObject({ minutes: modifiedExamDuration })
         )
         return examInterval.overlaps(assignedExamInterval)
       })
