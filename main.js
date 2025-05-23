@@ -6,7 +6,7 @@ const fs = require('fs')
 const {
   GENERAL_DUTIES,
   getOrderedAvailableTeachers,
-  updateCoveringNumber,
+  updateSubstitutionNumber,
   checkAssignedCrashWithUnavailable
 } = require('./helper.js')
 
@@ -28,8 +28,8 @@ const main = async () => {
   )
 
   const teachers = rawTeachers.map((t) => {
-    t.originalCoveringNumber = parseInt(t.coveringNumber)
-    t.coveringNumber = parseInt(t.coveringNumber)
+    t.originalSubstitutionNumber = parseInt(t.substitutionNumber)
+    t.substitutionNumber = parseInt(t.substitutionNumber)
     t.totalInvigilationTime = 0
     t.generalDuty = 0
     t.occurrence = 0
@@ -107,7 +107,7 @@ const main = async () => {
     const { classcode, invigilators, duration } = exam
     invigilators.forEach((invigilator) => {
       const senDuration = Math.ceil(duration * 1.25)
-      updateCoveringNumber(
+      updateSubstitutionNumber(
         teachers,
         invigilator,
         classcode.match(/^\d{1}S(R|T)?$/) ? senDuration : duration
@@ -151,7 +151,7 @@ const main = async () => {
 
         const senDuration = Math.ceil(duration * 1.25)
 
-        updateCoveringNumber(
+        updateSubstitutionNumber(
           teachers,
           teacher,
           classcode.match(/^\d{1}S(R|T)?$/) ? senDuration : duration,
@@ -353,8 +353,8 @@ const main = async () => {
     teachers.reduce((prev, t, idx) => {
       const {
         teacher,
-        originalCoveringNumber,
-        coveringNumber,
+        originalSubstitutionNumber,
+        substitutionNumber,
         totalInvigilationTime,
         occurrence,
         generalDuty,
@@ -363,18 +363,17 @@ const main = async () => {
       if (idx == 0) {
         prev.push([
           'teacher',
-          'originalCoveringNumber',
-          'coveringNumber',
+          'originalSubstitutionNumber',
+          'substitutionNumber',
           'totalInvigilationTime',
           'occurrence',
-          'generalDuty',
-          'isSkip'
+          'generalDuty'
         ])
       }
       prev.push([
         teacher,
-        originalCoveringNumber,
-        coveringNumber,
+        originalSubstitutionNumber,
+        substitutionNumber,
         totalInvigilationTime,
         occurrence,
         generalDuty,

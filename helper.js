@@ -5,9 +5,9 @@ const GENERAL_DUTIES = ['SB', 'G']
 const DC_TEAM_MEMBERS = ['JT', 'MKC', 'HYH', 'WTN', 'CSC']
 const EXCLUSED_STANDBY_TEACHERS = ['OLN', 'WHS', 'WYY', 'EC', 'KYY', 'CKL']
 
-function updateCoveringNumber(list, teacher, duration, isGeneralDuty) {
+function updateSubstitutionNumber(list, teacher, duration, isGeneralDuty) {
   const found = list.find((l) => l.teacher == teacher)
-  const addedCoveringNumber = Math.max(
+  const addedSubstitutionNumber = Math.max(
     0.5,
     Math.round((parseInt(duration) * 2) / 55) / 2
   )
@@ -15,8 +15,8 @@ function updateCoveringNumber(list, teacher, duration, isGeneralDuty) {
   if (!found) {
     list.push({
       teacher,
-      coveringNumber: addedCoveringNumber,
-      totalInvigilationTime: addedCoveringNumber,
+      substitutionNumber: addedSubstitutionNumber,
+      totalInvigilationTime: addedSubstitutionNumber,
       generalDuty: 1,
       occurrence: 1,
       isSkip: true
@@ -26,8 +26,8 @@ function updateCoveringNumber(list, teacher, duration, isGeneralDuty) {
 
   found.occurrence += 1
   if (!isGeneralDuty) {
-    found.coveringNumber += addedCoveringNumber
-    found.totalInvigilationTime += addedCoveringNumber
+    found.substitutionNumber += addedSubstitutionNumber
+    found.totalInvigilationTime += addedSubstitutionNumber
   } else {
     found.generalDuty += 1
   }
@@ -158,11 +158,11 @@ function getOrderedAvailableTeachers(
       'generalDuty',
       'occurrence',
       'totalInvigilationTime',
-      'coveringNumber'
+      'substitutionNumber'
     ])
   }
   return _.sortBy(orderedAvailableTeachers, [
-    'coveringNumber',
+    'substitutionNumber',
     'totalInvigilationTime',
     'occurrence'
   ])
@@ -170,7 +170,7 @@ function getOrderedAvailableTeachers(
 
 module.exports = {
   getOrderedAvailableTeachers,
-  updateCoveringNumber,
+  updateSubstitutionNumber,
   checkAssignedCrashWithUnavailable,
   GENERAL_DUTIES
 }
