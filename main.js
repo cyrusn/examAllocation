@@ -13,32 +13,6 @@ const {
 const { getSheetData, appendRows, batchClearData } = require('./googleSheet.js')
 
 const outputFilePath = './out'
-const ignoredSlots = [
-  {
-    teacher: 'HYH',
-    start: '2025-06-16T09:15:00',
-    end: '2025-06-16T10:15:00',
-    remark: 'VA 同 KPF take turn'
-  },
-  {
-    teacher: 'MC',
-    start: '2025-06-19T09:15:00',
-    end: '2025-06-19T10:15:00',
-    remark: '同 Science 老師夾'
-  },
-  {
-    teacher: 'SMT',
-    start: '2025-06-19T09:15:00',
-    end: '2025-06-19T10:15:00',
-    remark: '同 Science 老師夾'
-  },
-  {
-    teacher: 'YIL',
-    start: '2025-06-06T08:00:00',
-    end: '2025-06-06T08:45:00',
-    remark: 'JC 可以頂2B 班主任節'
-  }
-]
 
 const main = async () => {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
@@ -48,6 +22,10 @@ const main = async () => {
   const rawExaminations = await getSheetData(SPREADSHEET_ID, 'exam!A:I')
   const rawUnavailables = await getSheetData(SPREADSHEET_ID, 'unavailables!A:C')
   const rawTeachers = await getSheetData(SPREADSHEET_ID, 'teachers!A:D')
+  const ignoredSlots = await getSheetData(
+    SPREADSHEET_ID,
+    'ignoredUnavailables!A:D'
+  )
 
   const teachers = rawTeachers.map((t) => {
     t.originalCoveringNumber = parseInt(t.coveringNumber)
@@ -265,7 +243,15 @@ const main = async () => {
   )
 
   const excelPrintView = [
-    ['Date', 'Time', 'Duration\n(Extra)', 'Form', 'Subject', 'Paper IC', 'Location']
+    [
+      'Date',
+      'Time',
+      'Duration\n(Extra)',
+      'Form',
+      'Subject',
+      'Paper IC',
+      'Location'
+    ]
   ]
   const datekeys = _.keys(groupedExaminations)
 
