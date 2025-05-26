@@ -282,7 +282,7 @@ const main = async () => {
               ...(_(classcodes)
                 .sortBy(['time', 'classcode'])
                 .map(
-                  ({ classcode, invigilators, time }) =>
+                  ({ classcode, invigilators }) =>
                     `${classcode}\n${invigilators.join(', ')}`
                 )
                 .value() || [])
@@ -382,13 +382,6 @@ const main = async () => {
       return prev
     }, [])
   )
-
-  // fs.writeFileSync(
-  //   outputFilePath + '/teachers.json',
-  //   JSON.stringify(teachers, null, '\t'),
-  //   'utf8'
-  // )
-  //
 }
 
 main()
