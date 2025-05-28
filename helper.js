@@ -95,9 +95,13 @@ function getOrderedAvailableTeachers(
   const { startDateTime, duration, classlevel, classcode } = exam
 
   const senDuration = Math.ceil(duration * 1.25)
-  const modifiedExamDuration = classcode.match(/^\d{1}S(R|T)?$/)
+
+  const modifiedExamDuration = classcode.match(/\d{1}S(R|T)?/)
     ? senDuration
     : duration
+  // if (classlevel == 'S1/S2') {
+  //   console.log(modifiedExamDuration, senDuration, duration)
+  // }
 
   const examInterval = Interval.after(
     DateTime.fromISO(startDateTime).minus(bufferDuration),
@@ -121,7 +125,7 @@ function getOrderedAvailableTeachers(
           assignedExam
         if (!invigilators.includes(teacher)) return false
         const senDuration = Math.ceil(duration * 1.25)
-        const modifiedExamDuration = classcode.match(/^\d{1}S(R|T)?$/)
+        const modifiedExamDuration = classcode.match(/\d{1}S(R|T)?/)
           ? senDuration
           : duration
 

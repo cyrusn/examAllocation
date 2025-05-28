@@ -13,6 +13,7 @@ const {
 const { getSheetData, appendRows, batchClearData } = require('./googleSheet.js')
 
 const outputFilePath = './out'
+const orderKeys = ['S1', 'S2', 'S1/S2', 'S3', 'S4', 'S5', 'S6', 'FI', 'G', 'SB']
 
 const main = async () => {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
@@ -110,7 +111,7 @@ const main = async () => {
       updateSubstitutionNumber(
         teachers,
         invigilator,
-        classcode.match(/^\d{1}S(R|T)?$/) ? senDuration : duration
+        classcode.match(/\d{1}S(R|T)?/) ? senDuration : duration
       )
     })
   })
@@ -154,7 +155,7 @@ const main = async () => {
         updateSubstitutionNumber(
           teachers,
           teacher,
-          classcode.match(/^\d{1}S(R|T)?$/) ? senDuration : duration,
+          classcode.match(/\d{1}S(R|T)?/) ? senDuration : duration,
           GENERAL_DUTIES.includes(classlevel)
         )
         selectedTeachers.push(teacher)
@@ -265,7 +266,7 @@ const main = async () => {
 
     secondKeys.forEach((secondKey, j) => {
       _(groupedExaminations[date][secondKey])
-        .orderBy([secondKey, 'classlevel'])
+        .orderBy([secondKey, (c) => orderKeys.indexOf(c.classlevel)])
         .forEach((examSessions, i) => {
           const { classlevel, title, duration, paperInCharges, classcodes } =
             examSessions
