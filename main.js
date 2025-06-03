@@ -2,11 +2,13 @@ require('dotenv').config()
 const _ = require('lodash')
 const { DateTime } = require('luxon')
 const fs = require('fs')
+const VERSION = 'v1.3.0'
 
 const {
   GENERAL_DUTIES,
   getOrderedAvailableTeachers,
   updateSubstitutionNumber,
+  finalCheck,
   checkAssignedCrashWithUnavailable
 } = require('./helper.js')
 
@@ -14,6 +16,7 @@ const { getSheetData, appendRows, batchClearData } = require('./googleSheet.js')
 
 const outputFilePath = './out'
 const orderKeys = ['S1', 'S2', 'S1/S2', 'S3', 'S4', 'S5', 'S6', 'FI', 'G', 'SB']
+const guardianceOrderKeys = ['DC', 'Hall', '1/F', '2/F', '3/F', '4/F']
 
 const main = async () => {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
@@ -40,13 +43,24 @@ const main = async () => {
   // console.log(teachers)
 
   const examinations = _(rawExaminations)
-    .orderBy((exam) => {
-      const { classlevel, startDateTime } = exam
-      if (GENERAL_DUTIES.includes(classlevel) || classlevel == 'FI') {
-        return '9' + startDateTime
-      }
-      return startDateTime
-    })
+    .orderBy(
+      [
+        (exam) => {
+          const { classlevel, startDateTime } = exam
+          if (classlevel == 'FI') {
+            return '8' + startDateTime
+          }
+          if (GENERAL_DUTIES.includes(classlevel)) {
+            return '9' + startDateTime
+          }
+          return startDateTime
+        },
+        'invigilators',
+        'duration'
+      ],
+      ['asc', 'asc', 'desc']
+    )
+
     .reduce((prev, exam) => {
       const { classlevel, title, startDateTime } = exam
 
@@ -116,58 +130,64 @@ const main = async () => {
     })
   })
 
-  _(examinations)
-    .orderBy(['invigilators', 'duration'], ['asc', 'desc'])
-    .forEach((exam) => {
-      const {
-        classlevel,
-        classcode,
-        requiredInvigilators,
-        invigilators,
-        duration
-      } = exam
+  _(examinations).forEach((exam) => {
+    const {
+      classlevel,
+      classcode,
+      requiredInvigilators,
+      invigilators,
+      duration
+    } = exam
 
-      const availableTeachers = getOrderedAvailableTeachers(
+    const availableTeachers = getOrderedAvailableTeachers(
+      teachers,
+      unavailableArrays,
+      assignedExaminations,
+      exam
+    )
+
+    const len = invigilators.length
+
+    const selectedTeachers = []
+    for (let i = 0; i < requiredInvigilators - len; i++) {
+      const targetTeacher = availableTeachers[i]
+      if (!targetTeacher) {
+        console.error('No availableTeachers')
+        console.error(exam)
+        continue
+      }
+
+      const { teacher } = targetTeacher
+
+      const senDuration = Math.ceil(duration * 1.25)
+
+      updateSubstitutionNumber(
         teachers,
-        unavailableArrays,
-        assignedExaminations,
-        exam
+        teacher,
+        classcode.match(/\d{1}S(R|T)?/) ? senDuration : duration,
+        GENERAL_DUTIES.includes(classlevel)
       )
+      selectedTeachers.push(teacher)
+    }
 
-      const len = invigilators.length
-      const found = assignedExaminations.find(
-        ({ classcode, title, startDateTime }) => {
-          return (
-            classcode == exam.classcode &&
-            title == exam.title &&
-            startDateTime == exam.startDateTime
-          )
-        }
-      )
-
-      const selectedTeachers = []
-      for (let i = 0; i < requiredInvigilators - len; i++) {
-        const targetTeacher = availableTeachers[i]
-        const { teacher } = targetTeacher
-
-        const senDuration = Math.ceil(duration * 1.25)
-
-        updateSubstitutionNumber(
-          teachers,
-          teacher,
-          classcode.match(/\d{1}S(R|T)?/) ? senDuration : duration,
-          GENERAL_DUTIES.includes(classlevel)
+    const found = assignedExaminations.find(
+      ({ classcode, title, startDateTime }) => {
+        return (
+          classcode == exam.classcode &&
+          title == exam.title &&
+          startDateTime == exam.startDateTime
         )
-        selectedTeachers.push(teacher)
       }
+    )
 
-      if (found) {
-        found.invigilators.push(...selectedTeachers)
-      } else {
-        exam['invigilators'].push(...selectedTeachers)
-        assignedExaminations.push(exam)
-      }
-    })
+    if (found) {
+      found.invigilators.push(...selectedTeachers)
+      return
+    }
+
+    exam['invigilators'].push(...selectedTeachers)
+    assignedExaminations.push(exam)
+  })
 
   console.log(assignedExaminations.length, 'examinations are assigned')
 
@@ -266,7 +286,12 @@ const main = async () => {
 
     secondKeys.forEach((secondKey, j) => {
       _(groupedExaminations[date][secondKey])
-        .orderBy([secondKey, (c) => orderKeys.indexOf(c.classlevel)])
+        .orderBy([
+          secondKey,
+          (c) => {
+            return orderKeys.indexOf(c.classlevel)
+          }
+        ])
         .forEach((examSessions, i) => {
           const { classlevel, title, duration, paperInCharges, classcodes } =
             examSessions
@@ -281,7 +306,15 @@ const main = async () => {
               paperInCharges?.join(', ') || '',
               '',
               ...(_(classcodes)
-                .sortBy(['time', 'classcode'])
+                .sortBy([
+                  'time',
+                  function (c) {
+                    if (classlevel == 'G') {
+                      return guardianceOrderKeys.indexOf(c.classcode)
+                    }
+                    return c.classcode
+                  }
+                ])
                 .map(
                   ({ classcode, invigilators }) =>
                     `${classcode}\n${invigilators.join(', ')}`
@@ -316,7 +349,6 @@ const main = async () => {
             paperInCharges?.join(', ') || '',
             hallString,
             ...(_(classcodes)
-              .sortBy(['classcode'])
               .map(
                 ({ classcode, invigilators, location }) =>
                   `${classcode} (${location ? location + ')\n' : ''}${invigilators.join(', ')}`
@@ -326,6 +358,8 @@ const main = async () => {
         })
     })
   })
+
+  finalCheck(assignedExaminations)
 
   fs.writeFileSync(
     outputFilePath + '/grouped.json',
@@ -346,6 +380,8 @@ const main = async () => {
     ),
     'utf8'
   )
+
+  excelPrintView.push([[VERSION]])
 
   await appendRows(SPREADSHEET_ID, 'result!A:A', excelPrintView)
   await appendRows(
