@@ -1,4 +1,7 @@
-const { finalCheck } = require('./helper.js')
+const { printView, printTeacherView, printStat } = require('./printHelper')
 
 const assignedExaminations = require('./out/result.json')
-finalCheck(assignedExaminations)
+// finalCheck(assignedExaminations)
+printTeacherView(assignedExaminations)
+// printView(assignedExaminations)
+// printStat(assignedExaminations)

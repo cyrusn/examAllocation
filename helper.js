@@ -37,16 +37,21 @@ function getExamInterval(exam) {
   )
 }
 
-function updateSubstitutionNumber(list, teacher, duration, isGeneralDuty) {
-  const found = list.find((l) => l.teacher == teacher)
+function updateSubstitutionNumber(
+  teachers,
+  invigilator,
+  duration,
+  isGeneralDuty
+) {
+  const found = teachers.find((l) => l.teacher == invigilator)
   const addedSubstitutionNumber = Math.max(
     0.5,
     Math.round((parseInt(duration) * 2) / 55) / 2
   )
 
   if (!found) {
-    list.push({
-      teacher,
+    teachers.push({
+      teacher: invigilator,
       substitutionNumber: addedSubstitutionNumber,
       totalInvigilationTime: addedSubstitutionNumber,
       generalDuty: 1,
@@ -132,6 +137,8 @@ function getOrderedAvailableTeachers(
       const { teacher, isSkip, maxLoading, occurrence } = t
       if (maxLoading && maxLoading <= occurrence) return false
       if (isSkip != undefined) return false
+
+      // TA and DC members Do not need to have General Duties
       if (
         GENERAL_DUTIES.includes(classlevel) &&
         [...TEACHER_ASSISTANTS, ...DC_TEAM_MEMBERS].includes(teacher)
@@ -142,12 +149,29 @@ function getOrderedAvailableTeachers(
       const isAssigned = _(assignedExaminiations).some((assignedExam) => {
         const { invigilators } = assignedExam
 
-        // the teacher is available
+        // the teacher is already assigned in same examination
         if (!invigilators.includes(teacher)) return false
 
         const assignedExamInterval = getExamInterval(assignedExam)
         return examInterval.overlaps(assignedExamInterval)
       })
+
+      // check not more than 2 invigilation per day
+      const isTooMuchInvigilotion =
+        _(assignedExaminiations)
+          .filter((assignedExam) => {
+            const assignedStartDateTime = DateTime.fromISO(
+              assignedExam.startDateTime
+            )
+            return (
+              assignedExam.invigilators.includes(teacher) &&
+              DateTime.fromISO(exam.startDateTime).hasSame(
+                assignedStartDateTime,
+                'day'
+              )
+            )
+          })
+          .value().length >= 2
 
       // check if teachers in unavailableArrays
       const isUnavailable = _.some(unavailableArrays, (unavailable) => {
@@ -162,7 +186,7 @@ function getOrderedAvailableTeachers(
         })
       })
 
-      return !(isUnavailable || isAssigned)
+      return !(isUnavailable || isAssigned || isTooMuchInvigilotion)
     })
     .value()
 
@@ -178,7 +202,8 @@ function getOrderedAvailableTeachers(
   return _.sortBy(orderedAvailableTeachers, [
     'substitutionNumber',
     'totalInvigilationTime',
-    'occurrence'
+    'occurrence',
+    'generalDuty'
   ])
 }
 

@@ -10,25 +10,23 @@ const {
   checkAssignedCrashWithUnavailable
 } = require('./helper.js')
 
-const { printView } = require('./printHelper')
+const { printView, printStat } = require('./printHelper')
 
-const { getSheetData, batchClearData } = require('./googleSheet.js')
+const { getSheetData } = require('./googleSheet.js')
 
 const outputFilePath = './out'
 
 const main = async () => {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
   // clear result sheet first
-  await batchClearData(SPREADSHEET_ID, 'result!A:Z')
-  await batchClearData(SPREADSHEET_ID, 'stat!A:Z')
-  const rawExaminations = await getSheetData(SPREADSHEET_ID, 'exam!A:I')
+  const rawExaminations = await getSheetData(SPREADSHEET_ID, 'exam!A:M')
   const rawUnavailables = await getSheetData(SPREADSHEET_ID, 'unavailables!A:C')
-  const rawTeachers = await getSheetData(SPREADSHEET_ID, 'teachers!A:D')
   const ignoredSlots = await getSheetData(
     SPREADSHEET_ID,
     'ignoredUnavailables!A:D'
   )
 
+  const rawTeachers = await getSheetData(SPREADSHEET_ID, 'teachers!A:D')
   const teachers = rawTeachers.map((t) => {
     t.originalSubstitutionNumber = parseInt(t.substitutionNumber)
     t.substitutionNumber = parseInt(t.substitutionNumber)
@@ -43,6 +41,8 @@ const main = async () => {
   const examinations = _(rawExaminations)
     .orderBy(
       [
+        'binding',
+        'duration',
         (exam) => {
           const { classlevel, startDateTime } = exam
           if (classlevel == 'FI') {
@@ -53,15 +53,14 @@ const main = async () => {
           }
           return startDateTime
         },
-        'invigilators',
-        'duration'
+        'invigilators'
       ],
-      ['asc', 'asc', 'desc']
+      ['desc', 'desc', 'asc', 'asc']
     )
-
     .reduce((prev, exam) => {
-      const { classlevel, title, startDateTime } = exam
+      const { binding, id, session, classlevel, title, startDateTime } = exam
 
+      // console.log(exam)
       const invigilators = exam.invigilators?.split(',') || []
       const paperInCharges = exam.paperInCharges?.split(',') || []
       const duration = parseInt(exam.duration)
@@ -69,12 +68,17 @@ const main = async () => {
       const classcodes = exam.classcodes
       classcodes.split(',').forEach((classcode, index) => {
         prev.push({
+          binding: binding
+            ? `${binding}`.split(',').map((a) => `${a.trim()}-${index}`)
+            : '',
+          id: `${id}-${index}`,
+          session: session || 99,
           classlevel,
           classcode,
           title,
           startDateTime,
           duration,
-          requiredInvigilators: exam.requiredInvigilators
+          requiredInvigilators: String(exam.requiredInvigilators)
             .split(',')
             .map((r) => parseInt(r))[index],
           paperInCharges: [...paperInCharges],
@@ -136,22 +140,51 @@ const main = async () => {
       invigilators,
       duration
     } = exam
+    const bindedExams = []
 
-    const availableTeachers = getOrderedAvailableTeachers(
+    for (const e of examinations) {
+      if (e.binding.includes(exam.id)) {
+        bindedExams.push(e)
+      }
+    }
+
+    const examAvailbleTeachers = getOrderedAvailableTeachers(
       teachers,
       unavailableArrays,
       assignedExaminations,
       exam
     )
 
+    const availableTeachers = bindedExams.reduce(
+      (prev, e) => {
+        const tempTeachers = getOrderedAvailableTeachers(
+          teachers,
+          unavailableArrays,
+          assignedExaminations,
+          e
+        )
+        prev = _.intersection(prev, tempTeachers)
+        return prev
+      },
+      [...examAvailbleTeachers]
+    )
+
     const len = invigilators.length
 
     const selectedTeachers = []
+
     for (let i = 0; i < requiredInvigilators - len; i++) {
       const targetTeacher = availableTeachers[i]
       if (!targetTeacher) {
-        console.error('No availableTeachers')
-        console.error(exam)
+        const { title, id, classlevel, classcode, startDateTime } = exam
+        console.error(
+          'Not Assigned:',
+          startDateTime,
+          id,
+          classlevel,
+          classcode,
+          title
+        )
         continue
       }
 
@@ -183,35 +216,41 @@ const main = async () => {
       return
     }
 
+    for (const e of bindedExams) {
+      if (e.binding.includes(exam.id)) {
+        e['invigilators'].push(...selectedTeachers)
+        assignedExaminations.push(e)
+      }
+    }
+
     exam['invigilators'].push(...selectedTeachers)
     assignedExaminations.push(exam)
   })
 
   console.log(assignedExaminations.length, 'examinations are assigned')
 
+  const finalAssignedExaminations = _.sortBy(assignedExaminations, [
+    'startDateTime',
+    'classlevel',
+    'classcode'
+  ])
+
   checkAssignedCrashWithUnavailable(
-    assignedExaminations,
+    finalAssignedExaminations,
     unavailableArrays,
     ignoredSlots
   )
 
-  finalCheck(assignedExaminations)
+  finalCheck(finalAssignedExaminations)
 
   fs.writeFileSync(
     outputFilePath + '/result.json',
-    JSON.stringify(
-      _.sortBy(assignedExaminations, [
-        'startDateTime',
-        'classlevel',
-        'classcode'
-      ]),
-      null,
-      ''
-    ),
+    JSON.stringify(finalAssignedExaminations, null, ''),
     'utf8'
   )
 
-  await printView(assignedExaminations, teachers)
+  await printStat(finalAssignedExaminations)
+  await printView(finalAssignedExaminations)
 }
 
 main()
