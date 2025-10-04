@@ -1,7 +1,7 @@
 require('dotenv').config()
 const _ = require('lodash')
 const { DateTime } = require('luxon')
-const VERSION = 'v1.0.0'
+const VERSION = 'v1.0.1'
 
 const { GENERAL_DUTIES, updateSubstitutionNumber } = require('./helper.js')
 
@@ -411,8 +411,192 @@ async function printView(assignedExaminations) {
 
   await appendRows(SPREADSHEET_ID, 'result!A:A', excelPrintView)
 }
+
+async function printSen(assignedExaminations) {
+  const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
+  await batchClearData(SPREADSHEET_ID, 'SEN!A:Z')
+
+  const groupedExaminations = assignedExaminations.reduce(
+    (prev, assignedExamination) => {
+      const {
+        session,
+        classlevel,
+        classcode,
+        title,
+        startDateTime,
+        duration,
+        paperInCharges,
+        location,
+        invigilators
+      } = assignedExamination
+      const startDateTimeDT = DateTime.fromISO(startDateTime)
+      const date = startDateTimeDT.toFormat('yyyy-MM-dd\n(EEE)')
+      const startTime = startDateTimeDT.toFormat('HH:mm')
+      const time = `${startTime}`
+
+      const secondKey =
+        GENERAL_DUTIES.includes(classlevel) || classlevel == 'FI'
+          ? classlevel
+          : time
+
+      const obj = {
+        startDateTime,
+        time,
+        duration,
+        session,
+        classlevel,
+        title,
+        paperInCharges,
+        classcodes: [
+          { startDateTime, classcode, location, invigilators, time, duration }
+        ]
+      }
+      if (!_.has(prev, [date])) {
+        prev[date] = {}
+      }
+
+      if (!_.has(prev, [date, session])) {
+        prev[date][session] = {}
+      }
+
+      if (!_.has(prev, [date, session, secondKey])) {
+        prev[date][session][secondKey] = [obj]
+        return prev
+      }
+
+      const found = prev[date][session][secondKey].find(
+        (t) => t.title == title && t.classlevel == classlevel
+      )
+
+      if (found) {
+        found.classcodes.push({
+          startDateTime,
+          classcode,
+          location,
+          invigilators,
+          time,
+          duration
+        })
+      } else {
+        prev[date][session][secondKey].push(obj)
+      }
+      return prev
+    },
+    {}
+  )
+
+  const excelPrintView = [
+    [
+      'Date',
+      'session',
+      'Time',
+      'Duration\n(Extra)',
+      'Form',
+      'Subject',
+      'Paper IC',
+      'S',
+      'SR',
+      'ST'
+    ]
+  ]
+
+  const datekeys = _.keys(groupedExaminations)
+
+  datekeys.sort().forEach((date) => {
+    const sessions = _(groupedExaminations[date]).keys().sortBy()
+
+    sessions.forEach((session) => {
+      const secondKeys = _(groupedExaminations[date][session]).keys().sortBy()
+
+      secondKeys.forEach((secondKey) => {
+        _(groupedExaminations[date][session][secondKey])
+          .orderBy([
+            session,
+            (c) => c.classlevel,
+            (c) => {
+              return orderKeys.indexOf(c.classlevel)
+            },
+            secondKey
+          ])
+
+          .forEach((examSession) => {
+            const {
+              startDateTime,
+              classlevel,
+              title,
+              duration,
+              paperInCharges,
+              classcodes
+            } = examSession
+
+            if (
+              GENERAL_DUTIES.includes(secondKey) ||
+              secondKey == 'FI' ||
+              title == 'SSTU'
+            ) {
+              return
+            }
+
+            const hasSEN = _.some(classcodes, function ({ classcode }) {
+              return classcode[1] == 'S'
+            })
+
+            const formattedDuration = hasSEN
+              ? `${duration} (${Math.ceil(duration * 1.25)})`
+              : `${duration}`
+
+            const endTime = DateTime.fromISO(startDateTime)
+              .plus({ minutes: duration })
+              .toFormat('HH:mm')
+
+            const extendEndTime = DateTime.fromISO(startDateTime)
+              .plus({ minutes: Math.ceil(duration * 1.25) })
+              .toFormat('HH:mm')
+
+            const displayTime = hasSEN
+              ? `${secondKey}-${endTime}\n(${extendEndTime})`
+              : `${secondKey}-${endTime}`
+
+            const specialExams =
+              _(classcodes)
+                .filter(({ classcode }) => {
+                  return classcode[1] == 'S' || classcode[1] == 'N'
+                })
+                .sortBy([
+                  ({ classcode }) => {
+                    if (classcode[1] == 'N') return 'Z'
+                    return classcode
+                  }
+                ])
+                .value() || []
+
+            excelPrintView.push([
+              date,
+              `-${session}-`,
+              displayTime,
+              formattedDuration,
+              classlevel,
+              title,
+              paperInCharges?.join(', ') || '',
+              ...specialExams.map(
+                ({ location, invigilators }) =>
+                  `${location}\n${invigilators.join(', ')}`
+              )
+            ])
+          })
+      })
+    })
+  })
+
+  excelPrintView.push([[VERSION]])
+
+  console.log('running sen')
+  await appendRows(SPREADSHEET_ID, 'SEN!A:A', excelPrintView)
+}
+
 module.exports = {
   printView,
   printTeacherView,
-  printStat
+  printStat,
+  printSen
 }

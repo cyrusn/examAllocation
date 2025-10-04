@@ -10,7 +10,7 @@ const {
   checkAssignedCrashWithUnavailable
 } = require('./helper.js')
 
-const { printView, printStat } = require('./printHelper')
+const { printView, printStat, printSen } = require('./printHelper')
 
 const { getSheetData } = require('./googleSheet.js')
 
@@ -19,7 +19,7 @@ const outputFilePath = './out'
 const main = async () => {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
   // clear result sheet first
-  const rawExaminations = await getSheetData(SPREADSHEET_ID, 'exam!A:M')
+  const rawExaminations = await getSheetData(SPREADSHEET_ID, 'exam!A:N')
   const rawUnavailables = await getSheetData(SPREADSHEET_ID, 'unavailables!A:C')
   const ignoredSlots = await getSheetData(
     SPREADSHEET_ID,
@@ -41,7 +41,25 @@ const main = async () => {
   const examinations = _(rawExaminations)
     .orderBy(
       [
-        'binding',
+        ({ preferedTeachers }) => {
+          if (preferedTeachers)
+            return preferedTeachers.split(',').map((a) => a.trim()).length
+          return 999
+        },
+        ({ binding }) => {
+          if (binding)
+            return String(binding)
+              .split(',')
+              .map((a) => a.trim()).length
+          return 999
+        },
+        ({ invigilators }) => {
+          if (invigilators)
+            return String(invigilators)
+              .split(',')
+              .map((a) => a.trim()).length
+          return 999
+        },
         'duration',
         (exam) => {
           const { classlevel, startDateTime } = exam
@@ -52,24 +70,31 @@ const main = async () => {
             return '9' + startDateTime
           }
           return startDateTime
-        },
-        'invigilators'
+        }
       ],
-      ['desc', 'desc', 'asc', 'asc']
+      ['asc', 'asc', 'asc', 'desc', 'asc']
     )
     .reduce((prev, exam) => {
       const { binding, id, session, classlevel, title, startDateTime } = exam
 
       // console.log(exam)
-      const invigilators = exam.invigilators?.split(',') || []
-      const paperInCharges = exam.paperInCharges?.split(',') || []
+      const invigilators =
+        exam.invigilators?.replaceAll(/\n|\s|\r/g, '').split(',') || []
+      const preferedTeachers =
+        exam.preferedTeachers?.replaceAll(/\n|\s|\r/g, '').split(',') || []
+      const paperInCharges =
+        exam.paperInCharges?.replaceAll(/\n|\s|\r/g, '').split(',') || []
       const duration = parseInt(exam.duration)
 
       const classcodes = exam.classcodes
+      // console.log(classcodes)
       classcodes.split(',').forEach((classcode, index) => {
         prev.push({
           binding: binding
-            ? `${binding}`.split(',').map((a) => `${a.trim()}-${index}`)
+            ? `${binding}`
+                .replaceAll(/\n|\s|\r/g, '')
+                .split(',')
+                .map((a) => `${a.trim()}-${index}`)
             : '',
           id: `${id}-${index}`,
           session: session || 99,
@@ -79,11 +104,15 @@ const main = async () => {
           startDateTime,
           duration,
           requiredInvigilators: String(exam.requiredInvigilators)
+            .replaceAll(/\n|\s|\r/g, '')
             .split(',')
             .map((r) => parseInt(r))[index],
           paperInCharges: [...paperInCharges],
-          location: exam.locations.split(',')[index],
-          invigilators: _.compact(invigilators[index]?.split('|')) || []
+          location: exam.locations.replaceAll(/\n|\s|\r/g, '').split(',')[index],
+          invigilators:
+            _.compact(invigilators[index]?.split('|').map((a) => a.trim())) ||
+            [],
+          preferedTeachers
         })
       })
 
@@ -93,11 +122,9 @@ const main = async () => {
   const unavailableArrays = rawUnavailables.map((r) => {
     const { teachers, slots, remark } = r
     return {
-      teachers: teachers.split(','),
+      teachers: teachers.replaceAll(/\n|\s|\r/g).split(','),
       slots: slots
-        .replaceAll('\n', '')
-        .replaceAll('\r', '')
-        .replaceAll(' ', '')
+        .replaceAll(/\n|\s|\r/g, '')
         .split(',')
         .map((slot) => {
           const [start, end] = slot.split('/')
@@ -138,6 +165,7 @@ const main = async () => {
       classcode,
       requiredInvigilators,
       invigilators,
+      preferedTeachers,
       duration
     } = exam
     const bindedExams = []
@@ -155,7 +183,7 @@ const main = async () => {
       exam
     )
 
-    const availableTeachers = bindedExams.reduce(
+    const _availableTeachers = bindedExams.reduce(
       (prev, e) => {
         const tempTeachers = getOrderedAvailableTeachers(
           teachers,
@@ -167,6 +195,15 @@ const main = async () => {
         return prev
       },
       [...examAvailbleTeachers]
+    )
+
+    const availableTeachers = _.orderBy(
+      _availableTeachers,
+      (t) => {
+        if (preferedTeachers.length == 0) return false
+        return preferedTeachers.includes(t.teacher)
+      },
+      'desc'
     )
 
     const len = invigilators.length
@@ -224,6 +261,7 @@ const main = async () => {
     }
 
     exam['invigilators'].push(...selectedTeachers)
+    exam['availableTeacher'] = availableTeachers.join(', ')
     assignedExaminations.push(exam)
   })
 
@@ -251,6 +289,7 @@ const main = async () => {
 
   await printStat(finalAssignedExaminations)
   await printView(finalAssignedExaminations)
+  await printSen(finalAssignedExaminations)
 }
 
 main()
