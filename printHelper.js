@@ -112,6 +112,7 @@ async function printTeacherView(assignedExaminations) {
       })
     })
   })
+  console.log('Printing ResultByTeacher')
   await appendRows(SPREADSHEET_ID, 'resultByTeacher!A:A', excelPrintView)
 }
 
@@ -140,6 +141,7 @@ async function printStat(assignedExaminations) {
     })
   })
 
+  console.log('Printing Statistic')
   await appendRows(
     SPREADSHEET_ID,
     'stat!A:A',
@@ -409,6 +411,7 @@ async function printView(assignedExaminations) {
 
   excelPrintView.push([[VERSION]])
 
+  console.log('Printing Exam View')
   await appendRows(SPREADSHEET_ID, 'result!A:A', excelPrintView)
 }
 
@@ -590,7 +593,7 @@ async function printSen(assignedExaminations) {
 
   excelPrintView.push([[VERSION]])
 
-  console.log('running sen')
+  console.log('Printing SEN')
   await appendRows(SPREADSHEET_ID, 'SEN!A:A', excelPrintView)
 }
 

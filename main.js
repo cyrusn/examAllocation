@@ -10,7 +10,12 @@ const {
   checkAssignedCrashWithUnavailable
 } = require('./helper.js')
 
-const { printView, printStat, printSen } = require('./printHelper')
+const {
+  printView,
+  printStat,
+  printSen,
+  printTeacherView
+} = require('./printHelper')
 
 const { getSheetData } = require('./googleSheet.js')
 
@@ -87,34 +92,42 @@ const main = async () => {
       const duration = parseInt(exam.duration)
 
       const classcodes = exam.classcodes
-      // console.log(classcodes)
-      classcodes.split(',').forEach((classcode, index) => {
-        prev.push({
-          binding: binding
-            ? `${binding}`
-                .replaceAll(/\n|\s|\r/g, '')
-                .split(',')
-                .map((a) => `${a.trim()}-${index}`)
-            : '',
-          id: `${id}-${index}`,
-          session: session || 99,
-          classlevel,
-          classcode,
-          title,
-          startDateTime,
-          duration,
-          requiredInvigilators: String(exam.requiredInvigilators)
-            .replaceAll(/\n|\s|\r/g, '')
-            .split(',')
-            .map((r) => parseInt(r))[index],
-          paperInCharges: [...paperInCharges],
-          location: exam.locations.replaceAll(/\n|\s|\r/g, '').split(',')[index],
-          invigilators:
-            _.compact(invigilators[index]?.split('|').map((a) => a.trim())) ||
-            [],
-          preferedTeachers
+      classcodes
+        .replaceAll(/\n|\s|\r/g, '')
+        .split(',')
+        .forEach((classcode, index) => {
+          prev.push({
+            binding: binding
+              ? `${binding}`
+                  .replaceAll(/\n|\s|\r/g, '')
+                  .split(',')
+                  .map((a) => `${a.trim()}-${index}`)
+              : '',
+            id: `${id}-${index}`,
+            session: session || 99,
+            classlevel,
+            classcode,
+            title,
+            startDateTime,
+            duration,
+            requiredInvigilators: String(exam.requiredInvigilators)
+              .replaceAll(/\n|\s|\r/g, '')
+              .split(',')
+              .map((r) => parseInt(r))[index],
+            paperInCharges: [...paperInCharges],
+            location: exam.locations.replaceAll(/\n|\s|\r/g, '').split(',')[
+              index
+            ],
+            invigilators:
+              _.compact(
+                invigilators[index]
+                  ?.replaceAll(/\n|\s|\r/g, '')
+                  .split('|')
+                  .map((a) => a.trim())
+              ) || [],
+            preferedTeachers
+          })
         })
-      })
 
       return prev
     }, [])
@@ -184,14 +197,14 @@ const main = async () => {
     )
 
     const _availableTeachers = bindedExams.reduce(
-      (prev, e) => {
-        const tempTeachers = getOrderedAvailableTeachers(
+      (prev, bindedExam) => {
+        const currentAvailableTeachers = getOrderedAvailableTeachers(
           teachers,
           unavailableArrays,
           assignedExaminations,
-          e
+          bindedExam
         )
-        prev = _.intersection(prev, tempTeachers)
+        prev = _.intersectionBy(prev, currentAvailableTeachers, 'teacher')
         return prev
       },
       [...examAvailbleTeachers]
@@ -238,20 +251,17 @@ const main = async () => {
       selectedTeachers.push(teacher)
     }
 
-    const found = assignedExaminations.find(
-      ({ classcode, title, startDateTime }) => {
-        return (
-          classcode == exam.classcode &&
-          title == exam.title &&
-          startDateTime == exam.startDateTime
-        )
-      }
-    )
+    for (let assignedExam of assignedExaminations) {
+      const { id } = assignedExam
 
-    if (found) {
-      found.invigilators.push(...selectedTeachers)
-      return
+      if (exam.binding.includes(id)) {
+        assignedExam.invigilators.push(...selectedTeachers)
+      }
     }
+
+    const found = assignedExaminations.find(({ id }) => id == exam.id)
+
+    if (found) return
 
     for (const e of bindedExams) {
       if (e.binding.includes(exam.id)) {
@@ -261,7 +271,6 @@ const main = async () => {
     }
 
     exam['invigilators'].push(...selectedTeachers)
-    exam['availableTeacher'] = availableTeachers.join(', ')
     assignedExaminations.push(exam)
   })
 
@@ -290,6 +299,7 @@ const main = async () => {
   await printStat(finalAssignedExaminations)
   await printView(finalAssignedExaminations)
   await printSen(finalAssignedExaminations)
+  await printTeacherView(finalAssignedExaminations)
 }
 
 main()
