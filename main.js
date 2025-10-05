@@ -65,7 +65,6 @@ const main = async () => {
               .map((a) => a.trim()).length
           return 999
         },
-        'duration',
         (exam) => {
           const { classlevel, startDateTime } = exam
           if (classlevel == 'FI') {
@@ -75,9 +74,10 @@ const main = async () => {
             return '9' + startDateTime
           }
           return startDateTime
-        }
+        },
+        'duration',
       ],
-      ['asc', 'asc', 'asc', 'desc', 'asc']
+      ['asc', 'asc', 'asc', 'asc', 'desc']
     )
     .reduce((prev, exam) => {
       const { binding, id, session, classlevel, title, startDateTime } = exam

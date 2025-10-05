@@ -2,8 +2,8 @@ const _ = require('lodash')
 
 const { DateTime, Duration, Interval } = require('luxon')
 const GENERAL_DUTIES = ['SB', 'G']
-const DC_TEAM_MEMBERS = ['JT', 'MKC', 'HYH', 'WTN', 'CSC']
-const TEACHER_ASSISTANTS = ['OLN', 'WHS', 'WYY', 'EC', 'KYY', 'CKL']
+const DC_TEAM_MEMBERS = ['JT', 'MKC', 'HYH', 'WTN', 'CSC', 'OSL', 'KYL', 'TCL']
+const TEACHER_ASSISTANTS = ['OLN', 'WHS', 'WYY', 'EC', 'KYY', 'CKL', 'LS']
 const SKIP_CHECK_EXAMINATIONS = [
   { classlevel: 'S2', title: 'IS (LAB)' },
   { classlevel: 'S1', title: 'IS (LAB)' }
