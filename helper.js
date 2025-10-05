@@ -101,14 +101,7 @@ function checkAssignedCrashWithUnavailable(
               (t) =>
                 t.teacher == invigilator && t.start == start && t.end == end
             )
-            if (found) {
-              // console.warn({
-              //   assignedExam,
-              //   found,
-              //   unavailable: { invigilator, slot, remark }
-              // })
-              return
-            }
+            if (found) return
             crashedExams.push({ assignedExam, invigilator, slot, remark })
           }
         })
@@ -131,6 +124,7 @@ function getOrderedAvailableTeachers(
   const { classlevel } = exam
 
   const examInterval = getExamInterval(exam)
+  const examStartTime = DateTime.fromISO(exam.startDateTime)
 
   const orderedAvailableTeachers = _(teachers)
     .filter((t) => {
@@ -173,6 +167,25 @@ function getOrderedAvailableTeachers(
           })
           .value().length >= 2
 
+      const noOfLessonOnTheExamDay = _(unavailableArrays).reduce(
+        (prev, unavailable) => {
+          const { teachers, slots, remark } = unavailable
+          if (!/D\dP\d/.test(remark)) return prev
+          slots.forEach((slot) => {
+            const unavailableStartTime = DateTime.fromISO(slot.start)
+            if (
+              examStartTime.hasSame(unavailableStartTime, 'day') &&
+              teachers.includes(teacher)
+            ) {
+              if (exam.duration >= 90) prev += 1
+              prev += 1
+            }
+          })
+          return prev
+        },
+        0
+      )
+
       // check if teachers in unavailableArrays
       const isUnavailable = _.some(unavailableArrays, (unavailable) => {
         // if the teacher has no information in unavailables
@@ -186,7 +199,12 @@ function getOrderedAvailableTeachers(
         })
       })
 
-      return !(isUnavailable || isAssigned || isTooMuchInvigilotion)
+      return !(
+        isUnavailable ||
+        isAssigned ||
+        isTooMuchInvigilotion ||
+        noOfLessonOnTheExamDay > 4
+      )
     })
     .value()
 
