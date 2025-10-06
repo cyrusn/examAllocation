@@ -75,7 +75,7 @@ const main = async () => {
           }
           return startDateTime
         },
-        'duration',
+        'duration'
       ],
       ['asc', 'asc', 'asc', 'asc', 'desc']
     )
@@ -250,18 +250,24 @@ const main = async () => {
       )
       selectedTeachers.push(teacher)
     }
-
+    let isAddedInBinding = false
     for (let assignedExam of assignedExaminations) {
       const { id } = assignedExam
 
       if (exam.binding.includes(id)) {
         assignedExam.invigilators.push(...selectedTeachers)
+        isAddedInBinding = isAddedInBinding || true
       }
     }
 
     const found = assignedExaminations.find(({ id }) => id == exam.id)
 
-    if (found) return
+    if (found) {
+      if (!isAddedInBinding) {
+        found.invigilators.push(...selectedTeachers)
+      }
+      return
+    }
 
     for (const e of bindedExams) {
       if (e.binding.includes(exam.id)) {
