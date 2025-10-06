@@ -9,6 +9,7 @@ const SKIP_CHECK_EXAMINATIONS = [
   { classlevel: 'S1', title: 'IS (LAB)' }
 ]
 const BUFFER_TIME = 5
+const F6_BUFFER_TIME = 15
 
 function getIntervalBySlot(slot) {
   const { start, end } = slot
@@ -26,14 +27,26 @@ function getExamInterval(exam) {
 
   if (GENERAL_DUTIES.includes(classlevel)) {
     return Interval.after(
-      examStartDateTime.minus({ minutes: BUFFER_TIME }),
-      Duration.fromObject({ minutes: senDuration + BUFFER_TIME * 2 })
+      examStartDateTime.minus({
+        minutes: classcode.includes('6') ? F6_BUFFER_TIME : BUFFER_TIME
+      }),
+      Duration.fromObject({
+        minutes:
+          senDuration +
+          (classcode.includes('6') ? F6_BUFFER_TIME : BUFFER_TIME) * 2
+      })
     )
   }
 
   return Interval.after(
-    examStartDateTime.minus({ minutes: BUFFER_TIME }),
-    Duration.fromObject({ minutes: examDuration + BUFFER_TIME * 2 })
+    examStartDateTime.minus({
+      minutes: classcode.includes('6') ? F6_BUFFER_TIME : BUFFER_TIME
+    }),
+    Duration.fromObject({
+      minutes:
+        examDuration +
+        (classcode.includes('6') ? F6_BUFFER_TIME : BUFFER_TIME) * 2
+    })
   )
 }
 
