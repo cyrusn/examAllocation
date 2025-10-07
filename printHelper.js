@@ -495,7 +495,8 @@ async function printSen(assignedExaminations) {
       'Paper IC',
       'S',
       'SR',
-      'ST'
+      'ST',
+      'NCS'
     ]
   ]
 
@@ -549,25 +550,29 @@ async function printSen(assignedExaminations) {
               .toFormat('HH:mm')
 
             const extendEndTime = DateTime.fromISO(startDateTime)
-              .plus({ minutes: getSenDuration(examSession)})
+              .plus({ minutes: getSenDuration(examSession) })
               .toFormat('HH:mm')
 
             const displayTime = hasSEN
               ? `${secondKey}-${endTime}\n(${extendEndTime})`
               : `${secondKey}-${endTime}`
 
-            const specialExams =
-              _(classcodes)
-                .filter(({ classcode }) => {
-                  return classcode[1] == 'S' || classcode[1] == 'N'
+            const senTypes = [
+              ['S', 'S/SR'],
+              ['SR'],
+              ['ST', 'ST-1', 'ST-2'],
+              ['NCS']
+            ]
+
+            const specialExams = senTypes.map((types) => {
+              const result = _.filter(classcodes, ({ classcode }) => {
+                return types.some((type) => {
+                  return classcode == `${classlevel[1]}${type}`
                 })
-                .sortBy([
-                  ({ classcode }) => {
-                    if (classcode[1] == 'N') return 'Z'
-                    return classcode
-                  }
-                ])
-                .value() || []
+              })
+
+              return result
+            })
 
             excelPrintView.push([
               date,
@@ -577,9 +582,13 @@ async function printSen(assignedExaminations) {
               classlevel,
               title,
               paperInCharges?.join(', ') || '',
-              ...specialExams.map(
-                ({ location, invigilators }) =>
-                  `${location}\n${invigilators.join(', ')}`
+              ...specialExams.map((exams) =>
+                exams
+                  .map(
+                    ({ location, invigilators }) =>
+                      `${location}\n${invigilators.join(', ')}`
+                  )
+                  .join('\n')
               )
             ])
           })
