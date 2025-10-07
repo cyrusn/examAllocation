@@ -340,7 +340,8 @@ async function printView(assignedExaminations) {
 
             let hallString = ''
             const hall = classcodes.find(
-              ({ invigilators }) => invigilators.length > 2
+              // ({ invigilators }) => invigilators.length > 2
+              ({ location }) => location == 'HALL'
             )
 
             if (hall) {

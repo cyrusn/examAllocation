@@ -251,6 +251,7 @@ const main = async () => {
       selectedTeachers.push(teacher)
     }
     let isAddedInBinding = false
+
     for (let assignedExam of assignedExaminations) {
       const { id } = assignedExam
 
