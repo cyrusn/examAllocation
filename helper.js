@@ -19,10 +19,17 @@ function getIntervalBySlot(slot) {
   return Interval.fromDateTimes(startDT, endDT)
 }
 
+function getSenDuration(exam) {
+  // return exam.title.toUpperCase().replace('.', '').includes('VA')
+  //   ? Math.ceil(exam.duration * 1.05)
+  //   : Math.ceil(exam.duration * 1.25)
+  return Math.ceil(exam.duration * 1.25)
+}
+
 function getExamInterval(exam) {
   const { startDateTime, duration, classcode, classlevel } = exam
   const examStartDateTime = DateTime.fromISO(startDateTime)
-  const senDuration = Math.ceil(duration * 1.25)
+  const senDuration = getSenDuration(exam)
   const examDuration = classcode.match(/\d{1}S(R|T)?/) ? senDuration : duration
 
   if (GENERAL_DUTIES.includes(classlevel)) {
@@ -50,17 +57,20 @@ function getExamInterval(exam) {
   )
 }
 
-function updateSubstitutionNumber(
-  teachers,
-  invigilator,
-  duration,
-  isGeneralDuty
-) {
+function updateSubstitutionNumber(teachers, invigilator, exam) {
   const found = teachers.find((l) => l.teacher == invigilator)
+
+  const senDuration = getSenDuration(exam)
+  const duration = exam.classcode.match(/\d{1}S(R|T)?/)
+    ? senDuration
+    : exam.duration
+
   const addedSubstitutionNumber = Math.max(
     0.5,
     Math.round((parseInt(duration) * 2) / 55) / 2
   )
+
+  const { session, startDateTime, location } = exam
 
   if (!found) {
     teachers.push({
@@ -69,18 +79,39 @@ function updateSubstitutionNumber(
       totalInvigilationTime: addedSubstitutionNumber,
       generalDuty: 1,
       occurrence: 1,
-      isSkip: true
+      isSkip: true,
+      exams: [{ session, startDateTime, location }]
     })
     return
   }
+  if (!found.exams) {
+    found.exams = []
+  }
+
+  const countedExam = found.exams.find((e) => {
+    return (
+      e.session == session &&
+      e.startDateTime == startDateTime &&
+      e.location == location
+    )
+  })
+
+  if (countedExam) return
 
   found.occurrence += 1
-  if (!isGeneralDuty) {
+
+  if (!GENERAL_DUTIES.includes(exam.classlevel)) {
     found.substitutionNumber += addedSubstitutionNumber
     found.totalInvigilationTime += addedSubstitutionNumber
   } else {
     found.generalDuty += 1
   }
+
+  found.exams.push({
+    session,
+    startDateTime,
+    location
+  })
 }
 
 function checkAssignedCrashWithUnavailable(
@@ -280,5 +311,6 @@ module.exports = {
   updateSubstitutionNumber,
   checkAssignedCrashWithUnavailable,
   finalCheck,
+  getSenDuration,
   GENERAL_DUTIES
 }

@@ -161,14 +161,9 @@ const main = async () => {
   )
 
   assignedExaminations.forEach((exam) => {
-    const { classcode, invigilators, duration } = exam
+    const { invigilators } = exam
     invigilators.forEach((invigilator) => {
-      const senDuration = Math.ceil(duration * 1.25)
-      updateSubstitutionNumber(
-        teachers,
-        invigilator,
-        classcode.match(/\d{1}S(R|T)?/) ? senDuration : duration
-      )
+      updateSubstitutionNumber(teachers, invigilator, exam)
     })
   })
 
@@ -240,14 +235,7 @@ const main = async () => {
 
       const { teacher } = targetTeacher
 
-      const senDuration = Math.ceil(duration * 1.25)
-
-      updateSubstitutionNumber(
-        teachers,
-        teacher,
-        classcode.match(/\d{1}S(R|T)?/) ? senDuration : duration,
-        GENERAL_DUTIES.includes(classlevel)
-      )
+      updateSubstitutionNumber(teachers, teacher, exam)
       selectedTeachers.push(teacher)
     }
     let isAddedInBinding = false

@@ -3,7 +3,11 @@ const _ = require('lodash')
 const { DateTime } = require('luxon')
 const VERSION = 'v1.0.1'
 
-const { GENERAL_DUTIES, updateSubstitutionNumber } = require('./helper.js')
+const {
+  GENERAL_DUTIES,
+  updateSubstitutionNumber,
+  getSenDuration
+} = require('./helper.js')
 
 const { getSheetData, appendRows, batchClearData } = require('./googleSheet.js')
 const orderKeys = ['S1', 'S2', 'S1/S2', 'S3', 'S4', 'S5', 'S6', 'FI', 'G', 'SB']
@@ -20,7 +24,6 @@ async function printTeacherView(assignedExaminations) {
         classcode,
         title,
         startDateTime,
-        duration,
         paperInCharges,
         location,
         invigilators
@@ -28,8 +31,7 @@ async function printTeacherView(assignedExaminations) {
       const startDateTimeDT = DateTime.fromISO(startDateTime)
       const date = startDateTimeDT.toFormat('yyyy-MM-dd')
       const startTime = startDateTimeDT.toFormat('HH:mm')
-      const isSEN = classcode[1] == 'S'
-      const mDuration = isSEN ? Math.ceil(duration * 1.25) : duration
+      const mDuration = getSenDuration(assignedExamination)
       const endTime = startDateTimeDT
         .plus({ minutes: mDuration })
         .toFormat('HH:mm')
@@ -131,13 +133,9 @@ async function printStat(assignedExaminations) {
   })
 
   assignedExaminations.forEach((exam) => {
-    const { classlevel, classcode, duration, invigilators } = exam
+    const { invigilators } = exam
     invigilators.forEach((invigilator) => {
-      const senDuration = Math.ceil(duration * 1.25)
-      const mDuration = classcode.match(/\d{1}S(R|T)?/) ? senDuration : duration
-      const isGeneralDuty = GENERAL_DUTIES.includes(classlevel)
-
-      updateSubstitutionNumber(teachers, invigilator, mDuration, isGeneralDuty)
+      updateSubstitutionNumber(teachers, invigilator, exam)
     })
   })
 
@@ -335,14 +333,11 @@ async function printView(assignedExaminations) {
             })
 
             const formattedDuration = hasSEN
-              ? `${duration} (${Math.ceil(duration * 1.25)})`
+              ? `${duration} (${getSenDuration(examSession)})`
               : `${duration}`
 
             let hallString = ''
-            const hall = classcodes.find(
-              // ({ invigilators }) => invigilators.length > 2
-              ({ location }) => location == 'HALL'
-            )
+            const hall = classcodes.find(({ location }) => location == 'HALL')
 
             if (hall) {
               _.pull(classcodes, hall)
@@ -355,7 +350,7 @@ async function printView(assignedExaminations) {
               .toFormat('HH:mm')
 
             const extendEndTime = DateTime.fromISO(startDateTime)
-              .plus({ minutes: Math.ceil(duration * 1.25) })
+              .plus({ minutes: getSenDuration(examSession) })
               .toFormat('HH:mm')
 
             const displayTime = hasSEN
@@ -546,7 +541,7 @@ async function printSen(assignedExaminations) {
             })
 
             const formattedDuration = hasSEN
-              ? `${duration} (${Math.ceil(duration * 1.25)})`
+              ? `${duration} (${getSenDuration(examSession)})`
               : `${duration}`
 
             const endTime = DateTime.fromISO(startDateTime)
@@ -554,7 +549,7 @@ async function printSen(assignedExaminations) {
               .toFormat('HH:mm')
 
             const extendEndTime = DateTime.fromISO(startDateTime)
-              .plus({ minutes: Math.ceil(duration * 1.25) })
+              .plus({ minutes: getSenDuration(examSession)})
               .toFormat('HH:mm')
 
             const displayTime = hasSEN
