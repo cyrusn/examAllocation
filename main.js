@@ -24,7 +24,7 @@ const outputFilePath = './out'
 const main = async () => {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
   // clear result sheet first
-  const rawExaminations = await getSheetData(SPREADSHEET_ID, 'exam!A:N')
+  const rawExaminations = await getSheetData(SPREADSHEET_ID, 'exam!A:O')
   const rawUnavailables = await getSheetData(SPREADSHEET_ID, 'unavailables!A:C')
   const ignoredSlots = await getSheetData(
     SPREADSHEET_ID,
@@ -33,9 +33,9 @@ const main = async () => {
 
   const rawTeachers = await getSheetData(SPREADSHEET_ID, 'teachers!A:D')
   const teachers = rawTeachers.map((t) => {
-    t.originalSubstitutionNumber = parseInt(t.substitutionNumber)
-    t.substitutionNumber = parseInt(t.substitutionNumber)
-    t.totalInvigilationTime = 0
+    t.originalSubstitutionNumber = parseInt(t.substitutionNumber) || 0
+    t.substitutionNumber = parseInt(t.substitutionNumber) || 0
+    t.totalInvigilationTime = t.substitutionNumber * 55 || 0
     t.generalDuty = 0
     t.occurrence = 0
     return t
@@ -44,12 +44,17 @@ const main = async () => {
   // console.log(teachers)
 
   const examinations = _(rawExaminations)
+    .filter(({ skip, id }) => !skip && id)
     .orderBy(
       [
         ({ preferedTeachers }) => {
           if (preferedTeachers)
             return preferedTeachers.split(',').map((a) => a.trim()).length
           return 999
+        },
+        (exam) => {
+          const { startDateTime } = exam
+          return startDateTime.split('T')[0]
         },
         ({ binding }) => {
           if (binding)
@@ -64,16 +69,6 @@ const main = async () => {
               .split(',')
               .map((a) => a.trim()).length
           return 999
-        },
-        (exam) => {
-          const { classlevel, startDateTime } = exam
-          if (classlevel == 'FI') {
-            return '8' + startDateTime
-          }
-          if (GENERAL_DUTIES.includes(classlevel)) {
-            return '9' + startDateTime
-          }
-          return startDateTime
         },
         'duration'
       ],
@@ -96,13 +91,14 @@ const main = async () => {
         .replaceAll(/\n|\s|\r/g, '')
         .split(',')
         .forEach((classcode, index) => {
+          // console.log(exam)
           prev.push({
             binding: binding
               ? `${binding}`
                   .replaceAll(/\n|\s|\r/g, '')
                   .split(',')
                   .map((a) => `${a.trim()}-${index}`)
-              : '',
+              : [],
             id: `${id}-${index}`,
             session: session || 99,
             classlevel,
@@ -115,9 +111,9 @@ const main = async () => {
               .split(',')
               .map((r) => parseInt(r))[index],
             paperInCharges: [...paperInCharges],
-            location: exam.locations.replaceAll(/\n|\s|\r/g, '').split(',')[
-              index
-            ],
+            location: String(exam.locations)
+              .replaceAll(/\n|\s|\r/g, '')
+              .split(',')[index],
             invigilators:
               _.compact(
                 invigilators[index]
@@ -160,12 +156,15 @@ const main = async () => {
     ignoredSlots
   )
 
-  assignedExaminations.forEach((exam) => {
-    const { invigilators } = exam
-    invigilators.forEach((invigilator) => {
-      updateSubstitutionNumber(teachers, invigilator, exam)
-    })
-  })
+  // assignedExaminations.forEach((exam) => {
+  //   const { invigilators } = exam
+  //   // if (exam.id.includes('5090')) {
+  //   //   console.log(invigilators)
+  //   // }
+  //   invigilators.forEach((invigilator) => {
+  //     updateSubstitutionNumber(teachers, invigilator, exam)
+  //   })
+  // })
 
   _(examinations).forEach((exam) => {
     const {
@@ -190,6 +189,7 @@ const main = async () => {
       assignedExaminations,
       exam
     )
+    // console.log(examAvailbleTeachers)
 
     const _availableTeachers = bindedExams.reduce(
       (prev, bindedExam) => {
@@ -205,14 +205,12 @@ const main = async () => {
       [...examAvailbleTeachers]
     )
 
-    const availableTeachers = _.orderBy(
-      _availableTeachers,
-      (t) => {
+    const availableTeachers = _(_availableTeachers)
+      .orderBy((t) => {
         if (preferedTeachers.length == 0) return false
         return preferedTeachers.includes(t.teacher)
-      },
-      'desc'
-    )
+      }, 'desc')
+      .value()
 
     const len = invigilators.length
 
@@ -235,7 +233,7 @@ const main = async () => {
 
       const { teacher } = targetTeacher
 
-      updateSubstitutionNumber(teachers, teacher, exam)
+      // console.log('inside requiredInvigilators')
       selectedTeachers.push(teacher)
     }
     let isAddedInBinding = false
@@ -261,7 +259,7 @@ const main = async () => {
     for (const e of bindedExams) {
       if (e.binding.includes(exam.id)) {
         e['invigilators'].push(...selectedTeachers)
-        assignedExaminations.push(e)
+        // assignedExaminations.push(e)
       }
     }
 

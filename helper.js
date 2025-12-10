@@ -5,10 +5,10 @@ const GENERAL_DUTIES = ['SB', 'G']
 const DC_TEAM_MEMBERS = ['JT', 'MKC', 'HYH', 'WTN', 'CSC', 'OSL', 'KYL', 'TCL']
 const TEACHER_ASSISTANTS = ['OLN', 'WHS', 'WYY', 'EC', 'KYY', 'CKL', 'LS']
 const SKIP_CHECK_EXAMINATIONS = [
-  { classlevel: 'S2', title: 'IS (LAB)' },
-  { classlevel: 'S1', title: 'IS (LAB)' }
+  { classlevel: 'S2', title: 'IS PRACTICAL' },
+  { classlevel: 'S1', title: 'IS PRACTICAL' }
 ]
-const BUFFER_TIME = 5
+const BUFFER_TIME = 15
 const F6_BUFFER_TIME = 15
 
 function getIntervalBySlot(slot) {
@@ -65,52 +65,51 @@ function updateSubstitutionNumber(teachers, invigilator, exam) {
     ? senDuration
     : exam.duration
 
-  const addedSubstitutionNumber = Math.max(
-    0.5,
-    Math.round((parseInt(duration) * 2) / 55) / 2
-  )
-
   const { session, startDateTime, location } = exam
+
+  let timeAdded = 0
+  let generalDuty = 0
+
+  timeAdded = duration
+  if (!GENERAL_DUTIES.includes(exam.classlevel)) {
+  } else {
+    if (exam.classlevel == 'G') {
+      timeAdded = 30
+    }
+    generalDuty = 1
+  }
 
   if (!found) {
     teachers.push({
       teacher: invigilator,
-      substitutionNumber: addedSubstitutionNumber,
-      totalInvigilationTime: addedSubstitutionNumber,
-      generalDuty: 1,
+      totalInvigilationTime: timeAdded,
+      generalDuty: generalDuty,
       occurrence: 1,
       isSkip: true,
-      exams: [{ session, startDateTime, location }]
+      exams: [{ session, startDateTime, location, timeAdded }]
     })
     return
   }
+
   if (!found.exams) {
     found.exams = []
   }
 
   const countedExam = found.exams.find((e) => {
-    return (
-      e.session == session &&
-      e.startDateTime == startDateTime &&
-      e.location == location
-    )
+    return e.session == session && e.location == location
   })
 
   if (countedExam) return
 
   found.occurrence += 1
-
-  if (!GENERAL_DUTIES.includes(exam.classlevel)) {
-    found.substitutionNumber += addedSubstitutionNumber
-    found.totalInvigilationTime += addedSubstitutionNumber
-  } else {
-    found.generalDuty += 1
-  }
+  found.totalInvigilationTime += timeAdded
+  found.generalDuty += generalDuty
 
   found.exams.push({
     session,
     startDateTime,
-    location
+    location,
+    timeAdded
   })
 }
 
@@ -162,15 +161,23 @@ function checkAssignedCrashWithUnavailable(
 function getOrderedAvailableTeachers(
   teachers,
   unavailableArrays,
-  assignedExaminiations,
+  assignedExaminations,
   exam
 ) {
   const { classlevel } = exam
 
   const examInterval = getExamInterval(exam)
   const examStartTime = DateTime.fromISO(exam.startDateTime)
+  const clonedTeachers = [...teachers]
 
-  const orderedAvailableTeachers = _(teachers)
+  assignedExaminations.forEach((exam) => {
+    const { invigilators } = exam
+    invigilators.forEach((invigilator) => {
+      updateSubstitutionNumber(clonedTeachers, invigilator, exam)
+    })
+  })
+
+  const orderedAvailableTeachers = _(clonedTeachers)
     .filter((t) => {
       const { teacher, isSkip, maxLoading, occurrence } = t
       if (maxLoading && maxLoading <= occurrence) return false
@@ -184,7 +191,7 @@ function getOrderedAvailableTeachers(
         return false
 
       // Check teachers has assigned
-      const isAssigned = _(assignedExaminiations).some((assignedExam) => {
+      const isAssigned = _(assignedExaminations).some((assignedExam) => {
         const { invigilators } = assignedExam
 
         // the teacher is already assigned in same examination
@@ -196,7 +203,7 @@ function getOrderedAvailableTeachers(
 
       // check not more than 2 invigilation per day
       const isTooMuchInvigilotion =
-        _(assignedExaminiations)
+        _(assignedExaminations)
           .filter((assignedExam) => {
             const assignedStartDateTime = DateTime.fromISO(
               assignedExam.startDateTime
@@ -221,7 +228,10 @@ function getOrderedAvailableTeachers(
               examStartTime.hasSame(unavailableStartTime, 'day') &&
               teachers.includes(teacher)
             ) {
-              if (exam.duration >= 90) prev += 1
+              if (exam.duration >= 60) prev += 1
+              if (exam.duration >= 120) prev += 1
+              if (exam.duration >= 180) prev += 1
+              if (exam.duration >= 240) prev += 1
               prev += 1
             }
           })
@@ -233,6 +243,7 @@ function getOrderedAvailableTeachers(
       // check if teachers in unavailableArrays
       const isUnavailable = _.some(unavailableArrays, (unavailable) => {
         // if the teacher has no information in unavailables
+
         const { teachers, slots } = unavailable
 
         if (!teachers.includes(teacher)) return false
@@ -242,6 +253,10 @@ function getOrderedAvailableTeachers(
           return examInterval.overlaps(unavailableInterval)
         })
       })
+
+      // if (exam.id == '7021-1' && teacher == 'YML') {
+      //   console.log(isUnavailable)
+      // }
 
       return !(
         isUnavailable ||
@@ -253,20 +268,23 @@ function getOrderedAvailableTeachers(
     .value()
 
   if (GENERAL_DUTIES.includes(classlevel)) {
-    return _.sortBy(orderedAvailableTeachers, [
-      'generalDuty',
-      'occurrence',
-      'totalInvigilationTime',
-      'substitutionNumber'
-    ])
+    return _.orderBy(
+      orderedAvailableTeachers,
+      ['generalDuty', 'occurrence', 'totalInvigilationTime'],
+      ['asc', 'asc', 'asc']
+    )
   }
 
-  return _.sortBy(orderedAvailableTeachers, [
-    'substitutionNumber',
-    'totalInvigilationTime',
-    'occurrence',
-    'generalDuty'
-  ])
+  const result = _.orderBy(
+    orderedAvailableTeachers,
+    ['totalInvigilationTime', 'occurrence', 'generalDuty'],
+    ['asc', 'asc', 'asc']
+  )
+  // result.forEach((t) => {
+  //   if (t.teacher !== 'OMK') return
+  //   console.log(t)
+  // })
+  return result
 }
 
 function finalCheck(assignedExaminations) {

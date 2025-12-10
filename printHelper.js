@@ -125,8 +125,8 @@ async function printStat(assignedExaminations) {
   const rawTeachers = await getSheetData(SPREADSHEET_ID, 'teachers!A:D')
   const teachers = rawTeachers.map((t) => {
     t.originalSubstitutionNumber = parseInt(t.substitutionNumber) || 0
-    t.substitutionNumber = parseInt(t.substitutionNumber) || 0
-    t.totalInvigilationTime = 0
+    // t.substitutionNumber = parseInt(t.substitutionNumber) || 0
+    t.totalInvigilationTime = t.substitutionNumber * 55 || 0
     t.generalDuty = 0
     t.occurrence = 0
     return t
@@ -140,42 +140,40 @@ async function printStat(assignedExaminations) {
   })
 
   console.log('Printing Statistic')
-  await appendRows(
-    SPREADSHEET_ID,
-    'stat!A:A',
-    teachers.reduce((prev, t, idx) => {
-      const {
-        teacher,
-        originalSubstitutionNumber,
-        substitutionNumber,
-        totalInvigilationTime,
-        occurrence,
-        generalDuty,
-        isSkip
-      } = t
-      if (idx == 0) {
-        prev.push([
-          'teacher',
-          'originalSubstitutionNumber',
-          'substitutionNumber',
-          'totalInvigilationTime',
-          'occurrence',
-          'generalDuty',
-          'isSkip'
-        ])
-      }
+  const rows = teachers.reduce((prev, t, idx) => {
+    const {
+      teacher,
+      originalSubstitutionNumber,
+      // substitutionNumber,
+      totalInvigilationTime,
+      occurrence,
+      generalDuty,
+      isSkip
+    } = t
+    if (idx == 0) {
       prev.push([
-        teacher,
-        originalSubstitutionNumber,
-        substitutionNumber,
-        totalInvigilationTime,
-        occurrence,
-        generalDuty,
-        isSkip
+        'teacher',
+        'originalSubstitutionNumber',
+        'substitutionNumber',
+        'totalInvigilationTime',
+        'occurrence',
+        'generalDuty',
+        'isSkip'
       ])
-      return prev
-    }, [])
-  )
+    }
+    prev.push([
+      teacher,
+      originalSubstitutionNumber,
+      Math.round((totalInvigilationTime + 15) / 55),
+      totalInvigilationTime,
+      occurrence,
+      generalDuty,
+      isSkip
+    ])
+    return prev
+  }, [])
+
+  await appendRows(SPREADSHEET_ID, 'stat!A:A', _.orderBy(rows, [3], ['desc']))
 }
 
 async function printView(assignedExaminations) {
@@ -192,9 +190,11 @@ async function printView(assignedExaminations) {
         startDateTime,
         duration,
         paperInCharges,
-        location,
-        invigilators
+        location
       } = assignedExamination
+
+      const invigilators = _.uniq(assignedExamination.invigilators)
+
       const startDateTimeDT = DateTime.fromISO(startDateTime)
       const date = startDateTimeDT.toFormat('yyyy-MM-dd\n(EEE)')
       const startTime = startDateTimeDT.toFormat('HH:mm')
@@ -332,12 +332,21 @@ async function printView(assignedExaminations) {
               return classcode[1] == 'S'
             })
 
-            const formattedDuration = hasSEN
-              ? `${duration} (${getSenDuration(examSession)})`
-              : `${duration}`
+            const formattedDuration = `${duration} (${getSenDuration(examSession)})`
 
             let hallString = ''
-            const hall = classcodes.find(({ location }) => location == 'HALL')
+            const hall = classcodes.find(({ location }) => {
+              const hallGroup = [
+                'HALL',
+                '1/F',
+                '2/F',
+                '3/F',
+                '4/F',
+                '5/F',
+                'IS LAB'
+              ]
+              return hallGroup.includes(location)
+            })
 
             if (hall) {
               _.pull(classcodes, hall)
@@ -353,9 +362,7 @@ async function printView(assignedExaminations) {
               .plus({ minutes: getSenDuration(examSession) })
               .toFormat('HH:mm')
 
-            const displayTime = hasSEN
-              ? `${secondKey}-${endTime}\n(${extendEndTime})`
-              : `${secondKey}-${endTime}`
+            const displayTime = `${secondKey}-${endTime}\n(${extendEndTime})`
 
             const specialExams =
               _(classcodes)
@@ -381,6 +388,7 @@ async function printView(assignedExaminations) {
                 ? [...normalExams, ...filledArray, ...specialExams]
                 : classcodes
 
+            // console.log(modifiyedClasscodes)
             // if (j == 0 && i == 0) {
             //   excelPrintView.push([date])
             // }
@@ -418,6 +426,7 @@ async function printSen(assignedExaminations) {
   const groupedExaminations = assignedExaminations.reduce(
     (prev, assignedExamination) => {
       const {
+        id,
         session,
         classlevel,
         classcode,
@@ -425,9 +434,10 @@ async function printSen(assignedExaminations) {
         startDateTime,
         duration,
         paperInCharges,
-        location,
-        invigilators
+        location
       } = assignedExamination
+      const invigilators = _.uniq(assignedExamination.invigilators)
+
       const startDateTimeDT = DateTime.fromISO(startDateTime)
       const date = startDateTimeDT.toFormat('yyyy-MM-dd\n(EEE)')
       const startTime = startDateTimeDT.toFormat('HH:mm')
@@ -450,6 +460,15 @@ async function printSen(assignedExaminations) {
           { startDateTime, classcode, location, invigilators, time, duration }
         ]
       }
+      // console.log(
+      //   id,
+      //   startDateTime,
+      //   classcode,
+      //   location,
+      //   invigilators,
+      //   time,
+      //   duration
+      // )
       if (!_.has(prev, [date])) {
         prev[date] = {}
       }
@@ -538,7 +557,7 @@ async function printSen(assignedExaminations) {
             }
 
             const hasSEN = _.some(classcodes, function ({ classcode }) {
-              return classcode[1] == 'S'
+              return classcode[1] == 'S' || classcode[1] == 'N'
             })
 
             const formattedDuration = hasSEN
@@ -558,7 +577,7 @@ async function printSen(assignedExaminations) {
               : `${secondKey}-${endTime}`
 
             const senTypes = [
-              ['S', 'S/SR'],
+              ['S', 'S/SR', 'S/SR粵', 'S/SR普'],
               ['SR'],
               ['ST', 'ST-1', 'ST-2'],
               ['NCS']
