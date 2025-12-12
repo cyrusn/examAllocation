@@ -356,7 +356,7 @@ function finalCheck(assignedExaminations) {
 
 function progressLog(progress) {
   const barWidth = 30
-  const filledWidth = Math.floor(progress * barWidth)
+  const filledWidth = Math.ceil(progress * barWidth)
   const emptyWidth = barWidth - filledWidth
   const progressBar = '█'.repeat(filledWidth) + '▒'.repeat(emptyWidth)
   const result = `[${progressBar}] ${Math.ceil(progress * 100)}%`
