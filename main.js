@@ -7,7 +7,8 @@ const {
   getOrderedAvailableTeachers,
   updateSubstitutionNumber,
   finalCheck,
-  checkAssignedCrashWithUnavailable
+  checkAssignedCrashWithUnavailable,
+  progressLog
 } = require('./helper.js')
 
 const {
@@ -22,6 +23,8 @@ const { getSheetData } = require('./googleSheet.js')
 const outputFilePath = './out'
 
 const main = async () => {
+  console.log('Allocating Examinations...')
+  console.time('Time to finish')
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
   // clear result sheet first
   const rawExaminations = await getSheetData(SPREADSHEET_ID, 'exam!A:O')
@@ -34,7 +37,7 @@ const main = async () => {
   const rawTeachers = await getSheetData(SPREADSHEET_ID, 'teachers!A:D')
   const teachers = rawTeachers.map((t) => {
     t.originalSubstitutionNumber = parseInt(t.substitutionNumber) || 0
-    t.substitutionNumber = parseInt(t.substitutionNumber) || 0
+    // t.substitutionNumber = parseInt(t.substitutionNumber) || 0
     t.totalInvigilationTime = t.substitutionNumber * 55 || 0
     t.generalDuty = 0
     t.occurrence = 0
@@ -47,21 +50,15 @@ const main = async () => {
     .filter(({ skip, id }) => !skip && id)
     .orderBy(
       [
-        ({ preferedTeachers }) => {
-          if (preferedTeachers)
-            return preferedTeachers.split(',').map((a) => a.trim()).length
-          return 999
-        },
         (exam) => {
           const { startDateTime } = exam
           return startDateTime.split('T')[0]
         },
-        ({ binding }) => {
-          if (binding)
-            return String(binding)
-              .split(',')
-              .map((a) => a.trim()).length
-          return 999
+        (exam) => {
+          const { classlevel } = exam
+          const allDuties = [...GENERAL_DUTIES, 'FI']
+          if (allDuties.includes(classlevel))
+            return allDuties.indexOf(classlevel)
         },
         ({ invigilators }) => {
           if (invigilators)
@@ -70,9 +67,23 @@ const main = async () => {
               .map((a) => a.trim()).length
           return 999
         },
-        'duration'
+        ({ preferedTeachers }) => {
+          if (preferedTeachers)
+            return preferedTeachers.split(',').map((a) => a.trim()).length
+          return 999
+        },
+        ({ binding }) => {
+          if (binding)
+            return String(binding)
+              .split(',')
+              .map((a) => a.trim()).length
+          return 999
+        },
+        'duration',
+        'classlevel',
+        'classcode'
       ],
-      ['asc', 'asc', 'asc', 'asc', 'desc']
+      ['asc', 'asc', 'asc', 'asc', 'asc', 'desc', 'asc', 'asc']
     )
     .reduce((prev, exam) => {
       const { binding, id, session, classlevel, title, startDateTime } = exam
@@ -149,7 +160,7 @@ const main = async () => {
   const assignedExaminations = examinations.filter(
     ({ invigilators }) => invigilators.length
   )
-
+  progressLog(assignedExaminations.length / examinations.length)
   checkAssignedCrashWithUnavailable(
     assignedExaminations,
     unavailableArrays,
@@ -158,9 +169,6 @@ const main = async () => {
 
   // assignedExaminations.forEach((exam) => {
   //   const { invigilators } = exam
-  //   // if (exam.id.includes('5090')) {
-  //   //   console.log(invigilators)
-  //   // }
   //   invigilators.forEach((invigilator) => {
   //     updateSubstitutionNumber(teachers, invigilator, exam)
   //   })
@@ -205,12 +213,13 @@ const main = async () => {
       [...examAvailbleTeachers]
     )
 
-    const availableTeachers = _(_availableTeachers)
-      .orderBy((t) => {
-        if (preferedTeachers.length == 0) return false
-        return preferedTeachers.includes(t.teacher)
-      }, 'desc')
-      .value()
+    // const availableTeachers = _(_availableTeachers)
+    //   .orderBy((t) => {
+    //     if (preferedTeachers.length == 0) return false
+    //     return pre
+    //   }, 'desc')
+    //   .value()
+    const availableTeachers = _availableTeachers
 
     const len = invigilators.length
 
@@ -219,14 +228,18 @@ const main = async () => {
     for (let i = 0; i < requiredInvigilators - len; i++) {
       const targetTeacher = availableTeachers[i]
       if (!targetTeacher) {
-        const { title, id, classlevel, classcode, startDateTime } = exam
+        const { title, id, classlevel, classcode, startDateTime, duration } =
+          exam
         console.error(
           'Not Assigned:',
           startDateTime,
           id,
           classlevel,
           classcode,
-          title
+          title,
+          duration
+          // availableTeachers,
+          // examAvailbleTeachers
         )
         continue
       }
@@ -265,9 +278,10 @@ const main = async () => {
 
     exam['invigilators'].push(...selectedTeachers)
     assignedExaminations.push(exam)
+    progressLog(assignedExaminations.length / examinations.length)
   })
 
-  console.log(assignedExaminations.length, 'examinations are assigned')
+  console.log('\n', assignedExaminations.length, 'examinations are assigned')
 
   const finalAssignedExaminations = _.sortBy(assignedExaminations, [
     'startDateTime',
@@ -293,6 +307,8 @@ const main = async () => {
   await printView(finalAssignedExaminations)
   await printSen(finalAssignedExaminations)
   await printTeacherView(finalAssignedExaminations)
+
+  console.timeEnd('Time to finish')
 }
 
 main()

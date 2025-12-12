@@ -10,6 +10,7 @@ const SKIP_CHECK_EXAMINATIONS = [
 ]
 const BUFFER_TIME = 15
 const F6_BUFFER_TIME = 15
+const PREFERED_RATE = 0.7
 
 function getIntervalBySlot(slot) {
   const { start, end } = slot
@@ -153,7 +154,13 @@ function checkAssignedCrashWithUnavailable(
   })
 
   if (crashedExams.length > 0) {
-    crashedExams.forEach((exam) => console.error(exam))
+    crashedExams.forEach((exam) => {
+      // console.error(exam)
+      const { id, classcode, title, startDateTime, duration } =
+        exam.assignedExam
+      console.error(id, classcode, title, startDateTime, duration)
+      console.log(exam.invigilator, exam.slot.start, exam.slot.end, exam.remark)
+    })
     throw new Error("Assigned exam crashed with teacher's availablity.")
   }
 }
@@ -164,18 +171,18 @@ function getOrderedAvailableTeachers(
   assignedExaminations,
   exam
 ) {
-  const { classlevel } = exam
-
+  const { startDateTime, title, classlevel, preferedTeachers } = exam
+  // console.log( startDateTime, title, classlevel)
   const examInterval = getExamInterval(exam)
   const examStartTime = DateTime.fromISO(exam.startDateTime)
   const clonedTeachers = [...teachers]
 
-  assignedExaminations.forEach((exam) => {
-    const { invigilators } = exam
-    invigilators.forEach((invigilator) => {
-      updateSubstitutionNumber(clonedTeachers, invigilator, exam)
-    })
-  })
+  // assignedExaminations.forEach((exam) => {
+  //   const { invigilators } = exam
+  //   invigilators.forEach((invigilator) => {
+  //     updateSubstitutionNumber(clonedTeachers, invigilator, exam)
+  //   })
+  // })
 
   const orderedAvailableTeachers = _(clonedTeachers)
     .filter((t) => {
@@ -185,7 +192,7 @@ function getOrderedAvailableTeachers(
 
       // TA and DC members Do not need to have General Duties
       if (
-        GENERAL_DUTIES.includes(classlevel) &&
+        [...GENERAL_DUTIES, 'FI'].includes(classlevel) &&
         [...TEACHER_ASSISTANTS, ...DC_TEAM_MEMBERS].includes(teacher)
       )
         return false
@@ -202,6 +209,7 @@ function getOrderedAvailableTeachers(
       })
 
       // check not more than 2 invigilation per day
+      // const isTooMuchInvigilotion = false
       const isTooMuchInvigilotion =
         _(assignedExaminations)
           .filter((assignedExam) => {
@@ -216,21 +224,23 @@ function getOrderedAvailableTeachers(
               )
             )
           })
-          .value().length >= 2
+          .value().length > 2
 
       const noOfLessonOnTheExamDay = _(unavailableArrays).reduce(
         (prev, unavailable) => {
           const { teachers, slots, remark } = unavailable
           if (!/D\dP\d/.test(remark)) return prev
+
           slots.forEach((slot) => {
             const unavailableStartTime = DateTime.fromISO(slot.start)
+
             if (
               examStartTime.hasSame(unavailableStartTime, 'day') &&
               teachers.includes(teacher)
             ) {
-              if (exam.duration >= 60) prev += 1
+              // if (exam.duration >= 60) prev += 1
               if (exam.duration >= 120) prev += 1
-              if (exam.duration >= 180) prev += 1
+              // if (exam.duration >= 180) prev += 1
               if (exam.duration >= 240) prev += 1
               prev += 1
             }
@@ -258,12 +268,21 @@ function getOrderedAvailableTeachers(
       //   console.log(isUnavailable)
       // }
 
-      return !(
+      const result = !(
         isUnavailable ||
         isAssigned ||
         isTooMuchInvigilotion ||
         noOfLessonOnTheExamDay > 4
       )
+      // console.log(
+      //   t.teacher,
+      //   result,
+      //   isUnavailable,
+      //   isAssigned,
+      //   isTooMuchInvigilotion,
+      //   noOfLessonOnTheExamDay > 4
+      // )
+      return result
     })
     .value()
 
@@ -277,11 +296,22 @@ function getOrderedAvailableTeachers(
 
   const result = _.orderBy(
     orderedAvailableTeachers,
-    ['totalInvigilationTime', 'occurrence', 'generalDuty'],
+    [
+      (t) => {
+        const result = Math.round(t.totalInvigilationTime)
+
+        if (preferedTeachers.includes(t.teacher)) {
+          return result * PREFERED_RATE
+        }
+        return result
+      },
+      'occurrence',
+      'generalDuty'
+    ],
     ['asc', 'asc', 'asc']
   )
   // result.forEach((t) => {
-  //   if (t.teacher !== 'OMK') return
+  //   if (t.teacher !== 'WKL') return
   //   console.log(t)
   // })
   return result
@@ -324,11 +354,24 @@ function finalCheck(assignedExaminations) {
   console.log('Validation completed')
 }
 
+function progressLog(progress) {
+  const barWidth = 30
+  const filledWidth = Math.floor(progress * barWidth)
+  const emptyWidth = barWidth - filledWidth
+  const progressBar = '█'.repeat(filledWidth) + '▒'.repeat(emptyWidth)
+  const result = `[${progressBar}] ${Math.ceil(progress * 100)}%`
+  process.stdout.clearLine()
+  process.stdout.cursorTo(0)
+  process.stdout.write(`Progress: ${result}`)
+  if (progress == 1) console.log()
+}
+
 module.exports = {
   getOrderedAvailableTeachers,
   updateSubstitutionNumber,
   checkAssignedCrashWithUnavailable,
   finalCheck,
   getSenDuration,
+  progressLog,
   GENERAL_DUTIES
 }
