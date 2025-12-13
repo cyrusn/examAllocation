@@ -284,30 +284,27 @@ function getOrderedAvailableTeachers(
       return result
     })
     .value()
+  function orderTotalInvigilationTime(t) {
+    const result = t.totalInvigilationTime / 120
+
+    if (preferedTeachers.includes(t.teacher)) {
+      return Math.round(result * PREFERED_RATE)
+    }
+
+    return Math.round(result)
+  }
 
   if (GENERAL_DUTIES.includes(classlevel)) {
     return _.orderBy(
       orderedAvailableTeachers,
-      ['generalDuty', 'totalInvigilationTime', 'occurrence'],
+      ['generalDuty', orderTotalInvigilationTime, 'occurrence'],
       ['asc', 'asc', 'asc']
     )
   }
 
   const result = _.orderBy(
     orderedAvailableTeachers,
-    [
-      (t) => {
-        const result = t.totalInvigilationTime / 120
-
-        if (preferedTeachers.includes(t.teacher)) {
-          return Math.round(result * PREFERED_RATE)
-        }
-
-        return Math.round(result)
-      },
-      'occurrence',
-      'generalDuty'
-    ],
+    [orderTotalInvigilationTime, 'occurrence', 'generalDuty'],
     ['asc', 'asc', 'asc']
   )
 
