@@ -72,11 +72,9 @@ function updateSubstitutionNumber(teachers, invigilator, exam) {
   let generalDuty = 0
 
   timeAdded = duration
-  if (!GENERAL_DUTIES.includes(exam.classlevel)) {
-  } else {
-    if (exam.classlevel == 'G') {
-      timeAdded = 30
-    }
+  if (GENERAL_DUTIES.includes(exam.classlevel)) {
+    if (exam.classlevel == 'G') timeAdded = 30
+
     generalDuty = 1
   }
 
@@ -177,12 +175,35 @@ function getOrderedAvailableTeachers(
   const examStartTime = DateTime.fromISO(exam.startDateTime)
   const clonedTeachers = [...teachers]
 
-  // assignedExaminations.forEach((exam) => {
-  //   const { invigilators } = exam
-  //   invigilators.forEach((invigilator) => {
-  //     updateSubstitutionNumber(clonedTeachers, invigilator, exam)
-  //   })
-  // })
+  assignedExaminations.forEach((exam) => {
+    const { invigilators } = exam
+    invigilators.forEach((invigilator) => {
+      updateSubstitutionNumber(clonedTeachers, invigilator, exam)
+    })
+  })
+
+  const noOfLessonOnTheExamDayByTeacher = _(unavailableArrays).reduce(
+    (prev, unavailable) => {
+      const { teachers, slots, remark } = unavailable
+      if (!/D\dP\d/.test(remark)) return prev
+
+      teachers.forEach((teacher) => {
+        if (!(teacher in prev)) prev[teacher] = 0
+        slots.forEach((slot) => {
+          const unavailableStartTime = DateTime.fromISO(slot.start)
+
+          if (
+            examStartTime.hasSame(unavailableStartTime, 'day') &&
+            teachers.includes(teacher)
+          ) {
+            prev[teacher] += 1
+          }
+        })
+      })
+      return prev
+    },
+    {}
+  )
 
   const orderedAvailableTeachers = _(clonedTeachers)
     .filter((t) => {
@@ -192,7 +213,7 @@ function getOrderedAvailableTeachers(
 
       // TA and DC members Do not need to have General Duties
       if (
-        [...GENERAL_DUTIES, 'FI'].includes(classlevel) &&
+        [...GENERAL_DUTIES].includes(classlevel) &&
         [...TEACHER_ASSISTANTS, ...DC_TEAM_MEMBERS].includes(teacher)
       )
         return false
@@ -226,29 +247,7 @@ function getOrderedAvailableTeachers(
           })
           .value().length > 2
 
-      const noOfLessonOnTheExamDay = _(unavailableArrays).reduce(
-        (prev, unavailable) => {
-          const { teachers, slots, remark } = unavailable
-          if (!/D\dP\d/.test(remark)) return prev
-
-          slots.forEach((slot) => {
-            const unavailableStartTime = DateTime.fromISO(slot.start)
-
-            if (
-              examStartTime.hasSame(unavailableStartTime, 'day') &&
-              teachers.includes(teacher)
-            ) {
-              // if (exam.duration >= 60) prev += 1
-              if (exam.duration >= 120) prev += 1
-              // if (exam.duration >= 180) prev += 1
-              if (exam.duration >= 240) prev += 1
-              prev += 1
-            }
-          })
-          return prev
-        },
-        0
-      )
+      const noOfLessonOnTheExamDay = noOfLessonOnTheExamDayByTeacher[teacher]
 
       // check if teachers in unavailableArrays
       const isUnavailable = _.some(unavailableArrays, (unavailable) => {
@@ -289,7 +288,7 @@ function getOrderedAvailableTeachers(
   if (GENERAL_DUTIES.includes(classlevel)) {
     return _.orderBy(
       orderedAvailableTeachers,
-      ['generalDuty', 'occurrence', 'totalInvigilationTime'],
+      ['generalDuty', 'totalInvigilationTime', 'occurrence'],
       ['asc', 'asc', 'asc']
     )
   }
@@ -298,21 +297,23 @@ function getOrderedAvailableTeachers(
     orderedAvailableTeachers,
     [
       (t) => {
-        const result = Math.round(t.totalInvigilationTime)
+        const result = t.totalInvigilationTime / 120
 
         if (preferedTeachers.includes(t.teacher)) {
-          return result * PREFERED_RATE
+          return Math.round(result * PREFERED_RATE)
         }
-        return result
+
+        return Math.round(result)
       },
       'occurrence',
       'generalDuty'
     ],
     ['asc', 'asc', 'asc']
   )
-  // result.forEach((t) => {
-  //   if (t.teacher !== 'WKL') return
-  //   console.log(t)
+
+  // result.forEach((t, index) => {
+  //   if (t.teacher !== 'PUL') return
+  //   console.log(t.teacher, t.totalInvigilationTime, index)
   // })
   return result
 }

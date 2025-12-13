@@ -5,7 +5,7 @@ const fs = require('fs')
 const {
   GENERAL_DUTIES,
   getOrderedAvailableTeachers,
-  updateSubstitutionNumber,
+  // updateSubstitutionNumber,
   finalCheck,
   checkAssignedCrashWithUnavailable,
   progressLog
@@ -227,6 +227,26 @@ const main = async () => {
 
     for (let i = 0; i < requiredInvigilators - len; i++) {
       const targetTeacher = availableTeachers[i]
+
+      // if (availableTeachers.map((t) => t.teacher).includes('PUL')) {
+      //   console.log(
+      //     '\n',
+      //     exam,
+      //     '\n',
+      //     targetTeacher.teacher,
+      //     i,
+      //     requiredInvigilators,
+      //     len,
+      //     '\n',
+      //     ...availableTeachers
+      //       .map(
+      //         (t) =>
+      //           `${t.teacher}(${t.totalInvigilationTime},${t.occurrence},${t.generalDuty})`
+      //       )
+      //       .slice(0, 10)
+      //   )
+      // }
+
       if (!targetTeacher) {
         const { title, id, classlevel, classcode, startDateTime, duration } =
           exam
@@ -256,7 +276,7 @@ const main = async () => {
 
       if (exam.binding.includes(id)) {
         assignedExam.invigilators.push(...selectedTeachers)
-        isAddedInBinding = isAddedInBinding || true
+        isAddedInBinding = true
       }
     }
 
