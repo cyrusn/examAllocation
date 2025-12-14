@@ -176,7 +176,6 @@ function getNoOfLessonInPeriodByTeacher(unavailableArrays, exam) {
   const result = _(unavailableArrays).reduce((prev, unavailable) => {
     const { teachers, slots, remark } = unavailable
     if (!/D\dP\d/.test(remark)) return prev
-
     let Period
     switch (true) {
       case examInterval.overlaps(F1_F5_EXAM_PERIOD_INTERVAL):
@@ -217,6 +216,7 @@ function getOrderedAvailableTeachers(
     startDateTime,
     title,
     classlevel,
+    classcode,
     preferedTeachers,
     noOfLessonInPeriodByTeacher
   } = exam
@@ -272,34 +272,98 @@ function getOrderedAvailableTeachers(
       )
         return false
 
-      // Check teachers has assigned
-      const isAssigned = _(assignedExaminations).some((assignedExam) => {
-        const { invigilators } = assignedExam
+      let isAssigned = false
+      let noOfInvigilationInSameDay = 0
 
-        // the teacher is already assigned in same examination
-        if (!invigilators.includes(teacher)) return false
+      assignedExaminations.forEach((assignedExam) => {
+        const { invigilators, title, session, classlevel, location } =
+          assignedExam
 
-        const assignedExamInterval = getExamInterval(assignedExam)
-        return examInterval.overlaps(assignedExamInterval)
+        if (invigilators.includes(teacher)) {
+          const assignedExamInterval = getExamInterval(assignedExam)
+          const overlaped = examInterval.overlaps(assignedExamInterval)
+          isAssigned ||= overlaped
+        }
+
+        // if (
+        //   exam.id.includes('6111') &&
+        //   assignedExam.invigilators.includes('YLC') &&
+        //   teacher == 'YLC'
+        // ) {
+        //   console.log(
+        //     startDateTime,
+        //     title,
+        //     classlevel,
+        //     classcode,
+        //     '\n',
+        //     assignedExam.startDateTime,
+        //     assignedExam.title,
+        //     assignedExam.classcode,
+        //     assignedExam.invigilators,
+        //     assignedExam.location,
+        //     getExamInterval(assignedExam),
+        //     examInterval,
+        //     getExamInterval(assignedExam).overlaps(examInterval),
+        //     isAssigned
+        //   )
+        // }
+
+        const assignedStartDateTime = DateTime.fromISO(
+          assignedExam.startDateTime
+        )
+
+        const isAlreadyHasInvigilationOnSameDay =
+          exam.session !== session &&
+          exam.location !== location &&
+          assignedExam.invigilators.includes(teacher) &&
+          DateTime.fromISO(exam.startDateTime).hasSame(
+            assignedStartDateTime,
+            'day'
+          )
+        if (isAlreadyHasInvigilationOnSameDay) noOfInvigilationInSameDay += 1
       })
 
+      const isTooMuchInvigilation = noOfInvigilationInSameDay > 2
+
+      // if (isTooMuchInvigilotion) {
+      //   console.log(
+      //     exam.startDateTime,
+      //     exam.title,
+      //     exam.classlevel,
+      //     exam.location,
+      //     isAssigned,
+      //     teacher,
+      //     noOfInvigilationInSameDay,
+      //     isTooMuchInvigilotion
+      //   )
+      // }
+      // Check teachers has assigned
+      // const isAssigned = _(assignedExaminations).some((assignedExam) => {
+      //   const { invigilators } = assignedExam
+      //
+      //   // the teacher is already assigned in same examination
+      //   if (!invigilators.includes(teacher)) return false
+      //
+      //   const assignedExamInterval = getExamInterval(assignedExam)
+      //   return examInterval.overlaps(assignedExamInterval)
+      // })
+
       // check not more than 2 invigilation per day
-      // const isTooMuchInvigilotion = false
-      const isTooMuchInvigilotion =
-        _(assignedExaminations)
-          .filter((assignedExam) => {
-            const assignedStartDateTime = DateTime.fromISO(
-              assignedExam.startDateTime
-            )
-            return (
-              assignedExam.invigilators.includes(teacher) &&
-              DateTime.fromISO(exam.startDateTime).hasSame(
-                assignedStartDateTime,
-                'day'
-              )
-            )
-          })
-          .value().length > 2
+      // const isTooMuchInvigilotion =
+      //   _(assignedExaminations)
+      //     .filter((assignedExam) => {
+      //       const assignedStartDateTime = DateTime.fromISO(
+      //         assignedExam.startDateTime
+      //       )
+      //       return (
+      //         assignedExam.invigilators.includes(teacher) &&
+      //         DateTime.fromISO(exam.startDateTime).hasSame(
+      //           assignedStartDateTime,
+      //           'day'
+      //         )
+      //       )
+      //     })
+      //     .value().length > 2
 
       const noOfLessonOnTheExamDay = noOfLessonOnTheExamDayByTeacher[teacher]
 
@@ -324,7 +388,7 @@ function getOrderedAvailableTeachers(
       const result = !(
         isUnavailable ||
         isAssigned ||
-        isTooMuchInvigilotion ||
+        isTooMuchInvigilation ||
         noOfLessonOnTheExamDay > 4
       )
       // console.log(
@@ -332,7 +396,6 @@ function getOrderedAvailableTeachers(
       //   result,
       //   isUnavailable,
       //   isAssigned,
-      //   isTooMuchInvigilotion,
       //   noOfLessonOnTheExamDay > 4
       // )
       return result
