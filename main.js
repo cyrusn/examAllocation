@@ -6,6 +6,7 @@ const {
   GENERAL_DUTIES,
   getOrderedAvailableTeachers,
   // updateSubstitutionNumber,
+  getNoOfLessonInPeriodByTeacher,
   finalCheck,
   checkAssignedCrashWithUnavailable,
   progressLog
@@ -45,46 +46,26 @@ const main = async () => {
   })
 
   // console.log(teachers)
+  const unavailableArrays = rawUnavailables.map((r) => {
+    const { teachers, slots, remark } = r
+    return {
+      teachers: teachers.replaceAll(/\n|\s|\r/g).split(','),
+      slots: slots
+        .replaceAll(/\n|\s|\r/g, '')
+        .split(',')
+        .map((slot) => {
+          const [start, end] = slot.split('/')
+          return {
+            start,
+            end
+          }
+        }),
+      remark
+    }
+  })
 
   const examinations = _(rawExaminations)
     .filter(({ skip, id }) => !skip && id)
-    .orderBy(
-      [
-        (exam) => {
-          const { startDateTime } = exam
-          return startDateTime.split('T')[0]
-        },
-        (exam) => {
-          const { classlevel } = exam
-          const allDuties = [...GENERAL_DUTIES, 'FI']
-          if (allDuties.includes(classlevel))
-            return allDuties.indexOf(classlevel)
-        },
-        ({ invigilators }) => {
-          if (invigilators)
-            return String(invigilators)
-              .split(',')
-              .map((a) => a.trim()).length
-          return 999
-        },
-        ({ preferedTeachers }) => {
-          if (preferedTeachers)
-            return preferedTeachers.split(',').map((a) => a.trim()).length
-          return 999
-        },
-        ({ binding }) => {
-          if (binding)
-            return String(binding)
-              .split(',')
-              .map((a) => a.trim()).length
-          return 999
-        },
-        'duration',
-        'classlevel',
-        'classcode'
-      ],
-      ['asc', 'asc', 'asc', 'asc', 'asc', 'desc', 'asc', 'asc']
-    )
     .reduce((prev, exam) => {
       const { binding, id, session, classlevel, title, startDateTime } = exam
 
@@ -103,6 +84,11 @@ const main = async () => {
         .split(',')
         .forEach((classcode, index) => {
           // console.log(exam)
+          const noOfLessonInPeriodByTeacher = getNoOfLessonInPeriodByTeacher(
+            unavailableArrays,
+            { startDateTime, duration, classcode, classlevel }
+          )
+          // console.log(noOfLessonInPeriodByTeacher)
           prev.push({
             binding: binding
               ? `${binding}`
@@ -117,6 +103,7 @@ const main = async () => {
             title,
             startDateTime,
             duration,
+            noOfLessonInPeriodByTeacher,
             requiredInvigilators: String(exam.requiredInvigilators)
               .replaceAll(/\n|\s|\r/g, '')
               .split(',')
@@ -138,24 +125,6 @@ const main = async () => {
 
       return prev
     }, [])
-
-  const unavailableArrays = rawUnavailables.map((r) => {
-    const { teachers, slots, remark } = r
-    return {
-      teachers: teachers.replaceAll(/\n|\s|\r/g).split(','),
-      slots: slots
-        .replaceAll(/\n|\s|\r/g, '')
-        .split(',')
-        .map((slot) => {
-          const [start, end] = slot.split('/')
-          return {
-            start,
-            end
-          }
-        }),
-      remark
-    }
-  })
 
   const assignedExaminations = examinations.filter(
     ({ invigilators }) => invigilators.length
@@ -228,7 +197,7 @@ const main = async () => {
     for (let i = 0; i < requiredInvigilators - len; i++) {
       const targetTeacher = availableTeachers[i]
 
-      // if (availableTeachers.map((t) => t.teacher).includes('PUL')) {
+      // if (availableTeachers.map((t) => t.teacher).includes('SS')) {
       //   console.log(
       //     '\n',
       //     exam,

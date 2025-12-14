@@ -10,7 +10,9 @@ const SKIP_CHECK_EXAMINATIONS = [
 ]
 const BUFFER_TIME = 15
 const F6_BUFFER_TIME = 15
-const PREFERED_RATE = 0.7
+const PREFERED_RATE = 0.5
+const F1_F5_EXAM_PERIOD = '2026-01-06T00:00:00/2026-01-15T23:59:59'
+const F6_EXAM_PERIOD = '2026-01-19T00:00:00/2026-01-30T23:59:59'
 
 function getIntervalBySlot(slot) {
   const { start, end } = slot
@@ -73,9 +75,8 @@ function updateSubstitutionNumber(teachers, invigilator, exam) {
 
   timeAdded = duration
   if (GENERAL_DUTIES.includes(exam.classlevel)) {
-    if (exam.classlevel == 'G') timeAdded = 30
-
     generalDuty = 1
+    if (exam.classlevel == 'G') timeAdded = 30
   }
 
   if (!found) {
@@ -95,7 +96,11 @@ function updateSubstitutionNumber(teachers, invigilator, exam) {
   }
 
   const countedExam = found.exams.find((e) => {
-    return e.session == session && e.location == location
+    return (
+      e.session == session &&
+      e.location == location &&
+      e.startDateTime.slice(0, 10) == startDateTime.slice(0, 10)
+    )
   })
 
   if (countedExam) return
@@ -163,24 +168,66 @@ function checkAssignedCrashWithUnavailable(
   }
 }
 
+function getNoOfLessonInPeriodByTeacher(unavailableArrays, exam) {
+  const F1_F5_EXAM_PERIOD_INTERVAL = Interval.fromISO(F1_F5_EXAM_PERIOD)
+  const F6_EXAM_PERIOD_INTERVAL = Interval.fromISO(F6_EXAM_PERIOD)
+  const examInterval = getExamInterval(exam)
+
+  const result = _(unavailableArrays).reduce((prev, unavailable) => {
+    const { teachers, slots, remark } = unavailable
+    if (!/D\dP\d/.test(remark)) return prev
+
+    let Period
+    switch (true) {
+      case examInterval.overlaps(F1_F5_EXAM_PERIOD_INTERVAL):
+        Period = F1_F5_EXAM_PERIOD_INTERVAL
+        break
+      case examInterval.overlaps(F6_EXAM_PERIOD_INTERVAL):
+        Period = F6_EXAM_PERIOD_INTERVAL
+        break
+    }
+    if (!Period) return prev
+
+    teachers.forEach((teacher) => {
+      if (!(teacher in prev)) prev[teacher] = 0
+
+      slots.forEach((slot) => {
+        const unavailableInterval = getIntervalBySlot(slot)
+
+        if (
+          unavailableInterval.overlaps(Period) &&
+          teachers.includes(teacher)
+        ) {
+          prev[teacher] += 1
+        }
+      })
+    })
+    return prev
+  }, {})
+  return result
+}
+
 function getOrderedAvailableTeachers(
   teachers,
   unavailableArrays,
   assignedExaminations,
   exam
 ) {
-  const { startDateTime, title, classlevel, preferedTeachers } = exam
+  const {
+    startDateTime,
+    title,
+    classlevel,
+    preferedTeachers,
+    noOfLessonInPeriodByTeacher
+  } = exam
   // console.log( startDateTime, title, classlevel)
   const examInterval = getExamInterval(exam)
   const examStartTime = DateTime.fromISO(exam.startDateTime)
   const clonedTeachers = [...teachers]
 
-  assignedExaminations.forEach((exam) => {
-    const { invigilators } = exam
-    invigilators.forEach((invigilator) => {
-      updateSubstitutionNumber(clonedTeachers, invigilator, exam)
-    })
-  })
+  // if (classlevel == 'S1' || classlevel == 'S6') {
+  //   console.log(classlevel, title, noOfLessonInPeriodByTeacher)
+  // }
 
   const noOfLessonOnTheExamDayByTeacher = _(unavailableArrays).reduce(
     (prev, unavailable) => {
@@ -204,6 +251,13 @@ function getOrderedAvailableTeachers(
     },
     {}
   )
+
+  assignedExaminations.forEach((exam) => {
+    const { invigilators } = exam
+    invigilators.forEach((invigilator) => {
+      updateSubstitutionNumber(clonedTeachers, invigilator, exam)
+    })
+  })
 
   const orderedAvailableTeachers = _(clonedTeachers)
     .filter((t) => {
@@ -284,20 +338,22 @@ function getOrderedAvailableTeachers(
       return result
     })
     .value()
+
   function orderTotalInvigilationTime(t) {
-    const result = t.totalInvigilationTime / 120
+    const noOfLessonInPeriod = noOfLessonInPeriodByTeacher[t.teacher] || 0
+    const result = (t.totalInvigilationTime + noOfLessonInPeriod * 55) / 120
 
     if (preferedTeachers.includes(t.teacher)) {
       return Math.round(result * PREFERED_RATE)
     }
 
-    return Math.round(result)
+    return Math.round(result) || 0
   }
 
-  if (GENERAL_DUTIES.includes(classlevel)) {
+  if ([...GENERAL_DUTIES, 'FI'].includes(classlevel)) {
     return _.orderBy(
       orderedAvailableTeachers,
-      ['generalDuty', orderTotalInvigilationTime, 'occurrence'],
+      ['generalDuty', 'occurrence', orderTotalInvigilationTime],
       ['asc', 'asc', 'asc']
     )
   }
@@ -371,5 +427,6 @@ module.exports = {
   finalCheck,
   getSenDuration,
   progressLog,
+  getNoOfLessonInPeriodByTeacher,
   GENERAL_DUTIES
 }
