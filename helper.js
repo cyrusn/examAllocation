@@ -286,9 +286,9 @@ function getOrderedAvailableTeachers(
         }
 
         // if (
-        //   exam.id.includes('6111') &&
-        //   assignedExam.invigilators.includes('YLC') &&
-        //   teacher == 'YLC'
+        //   exam.id.includes('8028') &&
+        //   assignedExam.invigilators.includes('SYS') &&
+        //   teacher == 'SYS'
         // ) {
         //   console.log(
         //     startDateTime,

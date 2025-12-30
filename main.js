@@ -66,6 +66,8 @@ const main = async () => {
 
   const examinations = _(rawExaminations)
     .filter(({ skip, id }) => !skip && id)
+
+    .orderBy([(a) => !!a.binding], ['desc'])
     .reduce((prev, exam) => {
       const { binding, id, session, classlevel, title, startDateTime } = exam
 
