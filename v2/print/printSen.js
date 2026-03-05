@@ -66,6 +66,7 @@ async function printSen(assignedExaminations) {
       )
 
       if (found) {
+        found.paperInCharges = _.uniq([...(found.paperInCharges || []), ...(paperInCharges || [])])
         found.classcodes.push({
           startDateTime,
           classcode,

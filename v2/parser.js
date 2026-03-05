@@ -45,7 +45,7 @@ function parseExaminations(rawExaminations) {
       
       const invigilators = parseList(exam.invigilators)
       const preferedTeachers = parseList(exam.preferedTeachers)
-      const paperInCharges = parseList(exam.paperInCharges)
+      const paperInChargesList = parseList(exam.paperInCharges)
       const duration = parseInt(exam.duration)
       const classcodes = parseList(exam.classcodes)
 
@@ -75,6 +75,11 @@ function parseExaminations(rawExaminations) {
           preAssignedInvigilators = invigilators[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
         }
 
+        let assignedPaperInCharges = []
+        if (paperInChargesList[index]) {
+          assignedPaperInCharges = paperInChargesList[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
+        }
+
         prev.push({
           binding: bindingIds,
           id: `${id}-${index}`,
@@ -85,7 +90,7 @@ function parseExaminations(rawExaminations) {
           startDateTime,
           duration,
           requiredInvigilators,
-          paperInCharges: [...paperInCharges],
+          paperInCharges: assignedPaperInCharges,
           location,
           invigilators: preAssignedInvigilators,
           preferedTeachers
