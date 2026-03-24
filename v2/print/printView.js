@@ -7,9 +7,27 @@ const { appendRows, batchClearData } = require('../googleSheet')
 const orderKeys = ['S1', 'S2', 'S1/S2', 'S3', 'S4', 'S5', 'S6', 'FI', 'G', 'SB']
 const guardianceOrderKeys = ['DC', 'Hall', '1/F', '2/F', '3/F', '4/F']
 
-async function printView(assignedExaminations) {
+async function printView(assignedExaminations, teachers = []) {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
   await batchClearData(SPREADSHEET_ID, 'result!A:Z')
+
+  const formatInvigilators = (invigilators, skipPic = false) => {
+    if (!invigilators || invigilators.length === 0) return ''
+    if (skipPic || invigilators.length <= 1) return invigilators.join(', ')
+
+    let picIndex = invigilators.findIndex(inv => {
+      const teacherObj = teachers.find(t => t.teacher === inv)
+      return teacherObj && teacherObj.role === 'TEACHING_STAFF'
+    })
+
+    if (picIndex === -1) {
+      picIndex = 0
+    }
+
+    const formatted = [...invigilators]
+    const [pic] = formatted.splice(picIndex, 1)
+    return [`*${pic}`, ...formatted].join(', ')
+  }
 
   const groupedExaminations = assignedExaminations.reduce(
     (prev, assignedExamination) => {
@@ -153,7 +171,7 @@ async function printView(assignedExaminations) {
                   ])
                   .map(
                     ({ classcode, invigilators }) =>
-                      `${classcode}\n${invigilators.join(', ')}`
+                      `${classcode}\n${formatInvigilators(invigilators, true)}`
                   )
                   .value() || [])
               ])
@@ -179,7 +197,7 @@ async function printView(assignedExaminations) {
             if (hall) {
               _.pull(classcodes, hall)
               const { classcode, invigilators, location } = hall
-              hallString = `${classcode} (${location ? location + ')\n' : ''}*${invigilators.join(', ')}`
+              hallString = `${classcode} (${location ? location + ')\n' : ''}${formatInvigilators(invigilators)}`
             }
 
             const endTime = DateTime.fromISO(startDateTime)
@@ -229,7 +247,7 @@ async function printView(assignedExaminations) {
               ...modifiyedClasscodes.map((exam) => {
                 if (!exam) return ''
                 const { classcode, invigilators, location } = exam
-                return `${classcode} (${location ? location + ')\n' : ''}${invigilators.join(', ')}`
+                return `${classcode} (${location ? location + ')\n' : ''}${formatInvigilators(invigilators)}`
               })
             ])
           })

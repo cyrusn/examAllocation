@@ -12,7 +12,7 @@ function parseTeachers(rawTeachers) {
     totalInvigilationTime: (parseInt(t.substitutionNumber) || 0) * 55 || 0,
     generalDuty: 0,
     occurrence: 0,
-    exams: [] // Track assigned exams
+    exams: [],// Track assigned exams
   }))
 }
 

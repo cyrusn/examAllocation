@@ -33,7 +33,7 @@ const main = async () => {
     getSheetData(SPREADSHEET_ID, 'exam!A:O'),
     getSheetData(SPREADSHEET_ID, 'unavailables!A:C'),
     getSheetData(SPREADSHEET_ID, 'ignoredUnavailables!A:D'),
-    getSheetData(SPREADSHEET_ID, 'teachers!A:D')
+    getSheetData(SPREADSHEET_ID, 'teachers!A:E')
   ])
 
   // 2. Prepare Data
@@ -89,7 +89,7 @@ const main = async () => {
   )
 
   await printStat(finalAssignedExaminations)
-  await printView(finalAssignedExaminations)
+  await printView(finalAssignedExaminations, teachers)
   await printSen(finalAssignedExaminations)
   await printTeacherView(finalAssignedExaminations)
 
