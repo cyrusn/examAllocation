@@ -2,13 +2,14 @@ const _ = require('lodash')
 const { DateTime } = require('luxon')
 const { GENERAL_DUTIES, VERSION } = require('../constants')
 const { getSenDuration } = require('../utils')
-const { appendRows, batchClearData } = require('../googleSheet')
+const { appendRows, batchClearData, formatRowsBlack, clearSheetFormatting } = require('../googleSheet')
 
 const orderKeys = ['S1', 'S2', 'S1/S2', 'S3', 'S4', 'S5', 'S6', 'FI', 'G', 'SB']
 const guardianceOrderKeys = ['DC', 'Hall', '1/F', '2/F', '3/F', '4/F']
 
 async function printView(assignedExaminations, teachers = []) {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
+  await clearSheetFormatting(SPREADSHEET_ID, 'result')
   await batchClearData(SPREADSHEET_ID, 'result!A:Z')
 
   const formatInvigilators = (invigilators, skipPic = false) => {
@@ -120,6 +121,7 @@ async function printView(assignedExaminations, teachers = []) {
   ]
 
   const datekeys = _.keys(groupedExaminations)
+  const blackRowIndices = []
 
   datekeys.sort().forEach((date) => {
     const sessions = _(groupedExaminations[date]).keys().sortBy()
@@ -250,12 +252,16 @@ async function printView(assignedExaminations, teachers = []) {
           })
       })
     })
+
+    excelPrintView.push(new Array(15).fill(''))
+    blackRowIndices.push(excelPrintView.length - 1)
   })
 
   excelPrintView.push([[VERSION]])
 
   console.log('Printing Exam View')
   await appendRows(SPREADSHEET_ID, 'result!A:A', excelPrintView)
+  await formatRowsBlack(SPREADSHEET_ID, 'result', blackRowIndices)
 }
 
 module.exports = { printView }

@@ -86,8 +86,64 @@ async function appendRows(spreadsheetId, range, values) {
   return response.data
 }
 
+async function clearSheetFormatting(spreadsheetId, sheetName) {
+  const auth = await getAuth()
+  const getResponse = await sheets.spreadsheets.get({ auth, spreadsheetId })
+  const sheet = getResponse.data.sheets.find(s => s.properties.title === sheetName)
+  if (!sheet) return
+  const sheetId = sheet.properties.sheetId
+
+  await sheets.spreadsheets.batchUpdate({
+    auth,
+    spreadsheetId,
+    resource: {
+      requests: [{
+        updateCells: {
+          range: { sheetId },
+          fields: 'userEnteredFormat.backgroundColor'
+        }
+      }]
+    }
+  })
+}
+
+async function formatRowsBlack(spreadsheetId, sheetName, rowIndices) {
+  if (!rowIndices || rowIndices.length === 0) return
+  const auth = await getAuth()
+  const getResponse = await sheets.spreadsheets.get({ auth, spreadsheetId })
+  const sheet = getResponse.data.sheets.find(s => s.properties.title === sheetName)
+  if (!sheet) return
+  const sheetId = sheet.properties.sheetId
+
+  const requests = rowIndices.map(rowIndex => ({
+    repeatCell: {
+      range: {
+        sheetId,
+        startRowIndex: rowIndex,
+        endRowIndex: rowIndex + 1,
+        startColumnIndex: 0,
+        endColumnIndex: 15
+      },
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: { red: 0.0, green: 0.0, blue: 0.0 }
+        }
+      },
+      fields: 'userEnteredFormat.backgroundColor'
+    }
+  }))
+
+  await sheets.spreadsheets.batchUpdate({
+    auth,
+    spreadsheetId,
+    resource: { requests }
+  })
+}
+
 module.exports = {
   getSheetData,
   batchClearData,
-  appendRows
+  appendRows,
+  clearSheetFormatting,
+  formatRowsBlack
 }
