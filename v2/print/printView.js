@@ -49,10 +49,7 @@ async function printView(assignedExaminations, teachers = []) {
       const startTime = startDateTimeDT.toFormat('HH:mm')
       const time = `${startTime}`
 
-      const secondKey =
-        GENERAL_DUTIES.includes(classlevel) || classlevel == 'FI'
-          ? classlevel
-          : time
+      const secondKey = classlevel
 
       const obj = {
         startDateTime,
@@ -79,8 +76,9 @@ async function printView(assignedExaminations, teachers = []) {
         return prev
       }
 
+      const isSpecial = GENERAL_DUTIES.includes(classlevel) || classlevel == 'FI'
       const found = prev[date][session][secondKey].find(
-        (t) => t.title == title && t.classlevel == classlevel
+        (t) => t.title == title && t.classlevel == classlevel && (isSpecial || t.time == time)
       )
 
       if (found) {
@@ -127,21 +125,20 @@ async function printView(assignedExaminations, teachers = []) {
     const sessions = _(groupedExaminations[date]).keys().sortBy()
 
     sessions.forEach((session, k) => {
-      const secondKeys = _(groupedExaminations[date][session]).keys().sortBy()
+      const secondKeys = _(groupedExaminations[date][session])
+        .keys()
+        .sortBy((key) => {
+          const index = orderKeys.indexOf(key)
+          return index === -1 ? 999 : index
+        })
 
       secondKeys.forEach((secondKey, j) => {
         _(groupedExaminations[date][session][secondKey])
-          .orderBy([
-            session,
-            (c) => c.classlevel,
-            (c) => {
-              return orderKeys.indexOf(c.classlevel)
-            },
-            secondKey
-          ])
+          .orderBy(['time', 'title'])
           .forEach((examSession, i) => {
             const {
               startDateTime,
+              time,
               classlevel,
               title,
               duration,
@@ -208,7 +205,7 @@ async function printView(assignedExaminations, teachers = []) {
               .plus({ minutes: getSenDuration(examSession) })
               .toFormat('HH:mm')
 
-            const displayTime = `${secondKey}-${endTime}\n(${extendEndTime})`
+            const displayTime = `${time}-${endTime}\n(${extendEndTime})`
 
             const specialExams = _(
               classcodes
