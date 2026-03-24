@@ -107,7 +107,7 @@ async function clearSheetFormatting(spreadsheetId, sheetName) {
   })
 }
 
-async function formatRowsBlack(spreadsheetId, sheetName, rowIndices) {
+async function formatRowsGray(spreadsheetId, sheetName, rowIndices) {
   if (!rowIndices || rowIndices.length === 0) return
   const auth = await getAuth()
   const getResponse = await sheets.spreadsheets.get({ auth, spreadsheetId })
@@ -122,11 +122,11 @@ async function formatRowsBlack(spreadsheetId, sheetName, rowIndices) {
         startRowIndex: rowIndex,
         endRowIndex: rowIndex + 1,
         startColumnIndex: 0,
-        endColumnIndex: 15
+        endColumnIndex: 18
       },
       cell: {
         userEnteredFormat: {
-          backgroundColor: { red: 0.0, green: 0.0, blue: 0.0 }
+          backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 }
         }
       },
       fields: 'userEnteredFormat.backgroundColor'
@@ -145,5 +145,5 @@ module.exports = {
   batchClearData,
   appendRows,
   clearSheetFormatting,
-  formatRowsBlack
+  formatRowsGray
 }
