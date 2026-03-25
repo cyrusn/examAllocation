@@ -115,23 +115,39 @@ async function formatRowsGray(spreadsheetId, sheetName, rowIndices) {
   if (!sheet) return
   const sheetId = sheet.properties.sheetId
 
-  const requests = rowIndices.map(rowIndex => ({
-    repeatCell: {
-      range: {
-        sheetId,
-        startRowIndex: rowIndex,
-        endRowIndex: rowIndex + 1,
-        startColumnIndex: 0,
-        endColumnIndex: 18
-      },
-      cell: {
-        userEnteredFormat: {
-          backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 }
-        }
-      },
-      fields: 'userEnteredFormat.backgroundColor'
+  const requests = rowIndices.flatMap(rowIndex => [
+    {
+      repeatCell: {
+        range: {
+          sheetId,
+          startRowIndex: rowIndex,
+          endRowIndex: rowIndex + 1,
+          startColumnIndex: 0,
+          endColumnIndex: 18
+        },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 }
+          }
+        },
+        fields: 'userEnteredFormat.backgroundColor'
+      }
+    },
+    {
+      updateDimensionProperties: {
+        range: {
+          sheetId,
+          dimension: 'ROWS',
+          startIndex: rowIndex,
+          endIndex: rowIndex + 1
+        },
+        properties: {
+          pixelSize: 10
+        },
+        fields: 'pixelSize'
+      }
     }
-  }))
+  ])
 
   await sheets.spreadsheets.batchUpdate({
     auth,
