@@ -2,7 +2,7 @@ const _ = require('lodash')
 const { DateTime } = require('luxon')
 const { GENERAL_DUTIES, VERSION } = require('../constants')
 const { getSenDuration } = require('../utils')
-const { appendRows, batchClearData, formatRowsGray, clearSheetFormatting } = require('../googleSheet')
+const { appendRows, batchClearData, formatRowsGray, clearSheetFormatting, formatHeaderRow } = require('../googleSheet')
 
 const orderKeys = ['S1', 'S2', 'S1/S2', 'S3', 'S4', 'S5', 'S6', 'FI', 'G', 'SB']
 const guardianceOrderKeys = ['DC', 'Hall', '1/F', '2/F', '3/F', '4/F']
@@ -11,6 +11,7 @@ async function printView(assignedExaminations, teachers = []) {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
   await clearSheetFormatting(SPREADSHEET_ID, 'result')
   await batchClearData(SPREADSHEET_ID, 'result!A:Z')
+  await formatHeaderRow(SPREADSHEET_ID, 'result')
 
   const formatInvigilators = (invigilators, skipPic = false) => {
     if (!invigilators || invigilators.length === 0) return ''

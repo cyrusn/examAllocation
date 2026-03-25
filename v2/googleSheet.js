@@ -156,10 +156,47 @@ async function formatRowsGray(spreadsheetId, sheetName, rowIndices) {
   })
 }
 
+async function formatHeaderRow(spreadsheetId, sheetName) {
+  const auth = await getAuth()
+  const getResponse = await sheets.spreadsheets.get({ auth, spreadsheetId })
+  const sheet = getResponse.data.sheets.find(s => s.properties.title === sheetName)
+  if (!sheet) return
+  const sheetId = sheet.properties.sheetId
+
+  const requests = [{
+    repeatCell: {
+      range: {
+        sheetId,
+        startRowIndex: 0,
+        endRowIndex: 1,
+        startColumnIndex: 0,
+        endColumnIndex: 18
+      },
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: { red: 0.263, green: 0.263, blue: 0.263 },
+          textFormat: {
+            foregroundColor: { red: 1.0, green: 1.0, blue: 1.0 },
+            bold: true
+          }
+        }
+      },
+      fields: 'userEnteredFormat(backgroundColor,textFormat)'
+    }
+  }]
+
+  await sheets.spreadsheets.batchUpdate({
+    auth,
+    spreadsheetId,
+    resource: { requests }
+  })
+}
+
 module.exports = {
   getSheetData,
   batchClearData,
   appendRows,
   clearSheetFormatting,
-  formatRowsGray
+  formatRowsGray,
+  formatHeaderRow
 }
