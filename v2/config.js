@@ -16,6 +16,25 @@ module.exports = {
    * - session (e.g., 1, 2)
    */
   INVIGILATOR_RULES: [
+    // --- SEN Exams ---
+    {
+      // Match SEN exams based on class code (e.g., 1SR, 2ST)
+      match: (exam) => /\d{1}S(R|T)?/.test(exam.classcode),
+      count: 2
+    },
+
+    // --- Hall Rules ---
+    { 
+      // Hall exams for Junior forms (S1-S3, usually classes A-D)
+      match: (exam) => exam.location === 'HALL' && /[1-3]/.test(exam.classlevel), 
+      count: 4
+    },
+    { 
+      // Hall exams for Senior forms (S4-S6, usually classes A-E)
+      match: (exam) => exam.location === 'HALL' && /[4-6]/.test(exam.classlevel), 
+      count: 5
+    },
+
     // --- General Duties ---
     { 
       // All General Duties (G, SB) default to 1
@@ -26,7 +45,7 @@ module.exports = {
     // --- Location Based Rules ---
     { 
       match: (exam) => exam.location === 'HALL', 
-      count: 3 // Example: Hall always needs 3
+      count: 3 // Fallback for other Hall exams
     },
     { 
       match: (exam) => ['Gym', 'Covered Playground'].includes(exam.location), 

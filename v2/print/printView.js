@@ -2,15 +2,16 @@ const _ = require('lodash')
 const { DateTime } = require('luxon')
 const { GENERAL_DUTIES, VERSION } = require('../constants')
 const { getSenDuration } = require('../utils')
-const { appendRows, batchClearData, formatRowsGray, clearSheetFormatting, formatHeaderRow } = require('../googleSheet')
+const { appendRows, batchClearData, formatRowsGray, clearSheetFormatting, formatHeaderRow, autoResizeRows, setWrapText } = require('../googleSheet')
 
 const orderKeys = ['S1', 'S2', 'S1/S2', 'S3', 'S4', 'S5', 'S6', 'FI', 'G', 'SB']
 const guardianceOrderKeys = ['DC', 'Hall', '1/F', '2/F', '3/F', '4/F']
 
 async function printView(assignedExaminations, teachers = []) {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
-  await clearSheetFormatting(SPREADSHEET_ID, 'result')
   await batchClearData(SPREADSHEET_ID, 'result!A:Z')
+  await clearSheetFormatting(SPREADSHEET_ID, 'result')
+  await setWrapText(SPREADSHEET_ID, 'result')
   await formatHeaderRow(SPREADSHEET_ID, 'result')
 
   const formatInvigilators = (invigilators, skipPic = false) => {
@@ -34,6 +35,7 @@ async function printView(assignedExaminations, teachers = []) {
   const groupedExaminations = assignedExaminations.reduce(
     (prev, assignedExamination) => {
       const {
+        id,
         session,
         classlevel,
         classcode,
@@ -62,7 +64,7 @@ async function printView(assignedExaminations, teachers = []) {
         title,
         paperInCharges,
         classcodes: [
-          { startDateTime, classcode, location, invigilators, time, duration }
+          { id, startDateTime, classcode, location, invigilators, time, duration }
         ]
       }
       if (!_.has(prev, [date])) {
@@ -86,6 +88,7 @@ async function printView(assignedExaminations, teachers = []) {
       if (found) {
         found.paperInCharges = _.uniq([...(found.paperInCharges || []), ...(paperInCharges || [])])
         found.classcodes.push({
+          id,
           startDateTime,
           classcode,
           location,
@@ -104,7 +107,7 @@ async function printView(assignedExaminations, teachers = []) {
   const excelPrintView = [
     [
       'Date',
-      'session',
+      'Session',
       'Time',
       'Duration\n(Extra)',
       'Form',
@@ -181,7 +184,7 @@ async function printView(assignedExaminations, teachers = []) {
             const formattedDuration = `${duration} (${getSenDuration(examSession)})`
 
             let hallString = ''
-            const hall = classcodes.find(({ location }) => {
+            const hall = classcodes.find(({ location, classcode }) => {
               const hallGroup = [
                 'HALL',
                 '1/F',
@@ -191,13 +194,15 @@ async function printView(assignedExaminations, teachers = []) {
                 '5/F',
                 'IS LAB'
               ]
-              return hallGroup.includes(location)
+              const isGroupedClass = /^\d\s*[A-Za-z]\s*-\s*[A-Za-z]$/.test(classcode)
+              return hallGroup.includes((location || '').toUpperCase().trim()) || isGroupedClass
             })
 
             if (hall) {
               _.pull(classcodes, hall)
               const { classcode, invigilators, location } = hall
-              hallString = `${classcode} (${location ? location + ')\n' : ''}${formatInvigilators(invigilators)}`
+              // If it's a grouped class but not in the standard hallGroup, make sure we still print its actual location
+              hallString = `${classcode} (${location || ''})\n${formatInvigilators(invigilators)}`
             }
 
             const endTime = DateTime.fromISO(startDateTime)
@@ -224,9 +229,15 @@ async function printView(assignedExaminations, teachers = []) {
               ])
               .value() || []
 
-            const normalExams = classcodes.filter(({ classcode }) => {
-              return classcode[1] != 'S' && classcode[1] != 'N'
-            })
+            const normalExams = _(classcodes)
+              .filter(({ classcode }) => {
+                return classcode[1] != 'S' && classcode[1] != 'N'
+              })
+              .sortBy([
+                (exam) => parseInt(String(exam.id).split('-')[0], 10) || exam.id,
+                (exam) => exam.id
+              ])
+              .value()
 
             const filledArray = new Array(6 - normalExams.length).fill('')
 
@@ -262,6 +273,7 @@ async function printView(assignedExaminations, teachers = []) {
 
   console.log('Printing Exam View')
   await appendRows(SPREADSHEET_ID, 'result!A:A', excelPrintView)
+  await autoResizeRows(SPREADSHEET_ID, 'result')
   await formatRowsGray(SPREADSHEET_ID, 'result', grayRowIndices)
 }
 

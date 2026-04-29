@@ -2,13 +2,15 @@ const _ = require('lodash')
 const { DateTime } = require('luxon')
 const { GENERAL_DUTIES, VERSION } = require('../constants')
 const { getSenDuration } = require('../utils')
-const { appendRows, batchClearData } = require('../googleSheet')
+const { appendRows, batchClearData, clearSheetFormatting, autoResizeRows, setWrapText } = require('../googleSheet')
 
 const orderKeys = ['S1', 'S2', 'S1/S2', 'S3', 'S4', 'S5', 'S6', 'FI', 'G', 'SB']
 
 async function printSen(assignedExaminations) {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
   await batchClearData(SPREADSHEET_ID, 'SEN!A:Z')
+  await clearSheetFormatting(SPREADSHEET_ID, 'SEN')
+  await setWrapText(SPREADSHEET_ID, 'SEN')
 
   const groupedExaminations = assignedExaminations.reduce(
     (prev, assignedExamination) => {
@@ -199,6 +201,7 @@ async function printSen(assignedExaminations) {
 
   console.log('Printing SEN')
   await appendRows(SPREADSHEET_ID, 'SEN!A:A', excelPrintView)
+  await autoResizeRows(SPREADSHEET_ID, 'SEN')
 }
 
 module.exports = { printSen }

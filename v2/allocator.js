@@ -26,18 +26,30 @@ function allocateExaminations(examinations, teachers, unavailableArrays) {
     processedCount++
     progressLog(processedCount / totalExams)
 
+    // Identify Bindings
+    const bindedExams = examinations.filter(e => e.binding.includes(exam.id))
+    
+    // Sync state: Followers must follow the master's rule and share its invigilators
+    bindedExams.forEach(follower => {
+      follower.requiredInvigilators = exam.requiredInvigilators
+      
+      // Ensure follower has all invigilators the master has
+      exam.invigilators.forEach(inv => {
+        if (!follower.invigilators.includes(inv)) {
+          follower.invigilators.push(inv)
+        }
+      })
+    })
+
     const currentInvigilatorCount = exam.invigilators.length
     if (currentInvigilatorCount >= exam.requiredInvigilators) {
       continue
     }
 
-    // Identify Bindings
-    const bindedExams = examinations.filter(e => e.binding.includes(exam.id))
-    
     // Find Candidates
     const candidates = findCandidatesWithRetry(teachers, unavailableArrays, assignedExaminations, exam, bindedExams)
 
-    // Select Teachers
+    // Select Teachers (strictly dictated by the master exam's requirements)
     const needed = exam.requiredInvigilators - currentInvigilatorCount
     const selected = selectTeachers(candidates, needed, exam)
 
@@ -142,16 +154,20 @@ function applyAssignments(teachers, examsToUpdate, teacherIds) {
          return
       }
 
+      // Update all exams in the group with the teacher ID
       examsToUpdate.forEach(e => {
         if (!e.invigilators.includes(teacherId)) {
           e.invigilators.push(teacherId)
         }
-        
-        const tIndex = teachers.findIndex(t => t.teacher === teacherId)
-        if (tIndex !== -1) {
-          teachers[tIndex] = assignExamToTeacher(teachers[tIndex], e)
-        }
       })
+
+      // Update teacher statistics for ALL exams in the bound group
+      const tIndex = teachers.findIndex(t => t.teacher === teacherId)
+      if (tIndex !== -1) {
+        examsToUpdate.forEach(e => {
+          teachers[tIndex] = assignExamToTeacher(teachers[tIndex], e)
+        })
+      }
     })
 }
 

@@ -13,5 +13,5 @@ module.exports = {
   F6_EXAM_PERIOD: '2026-01-19T00:00:00/2026-01-30T23:59:59',
   TIMEZONE: 'Asia/Hong_Kong',
   OUTPUT_FILE_PATH: './out',
-  VERSION: 'v2.2.0'
+  VERSION: 'v2.3.0'
 }

@@ -49,13 +49,29 @@ function assignExamToTeacher(teacher, exam) {
   const newTeacher = { ...teacher, exams: [...(teacher.exams || [])] }
   
   // Check for duplicate assignment (same session/loc/day)
-  const isDuplicate = newTeacher.exams.some(e => 
+  const existingImpact = newTeacher.exams.find(e => 
     e.session == session &&
     e.location == location &&
     e.startDateTime.slice(0, 10) == startDateTime.slice(0, 10)
   )
 
-  if (isDuplicate) return teacher
+  if (existingImpact) {
+    // Update time to the longest one in this session/room
+    if (timeAdded > existingImpact.timeAdded) {
+      newTeacher.totalInvigilationTime = (newTeacher.totalInvigilationTime || 0) + (timeAdded - existingImpact.timeAdded)
+      existingImpact.timeAdded = timeAdded
+    }
+    // Update SEN/General duty flags if the new exam provides them
+    if (senDuty > (existingImpact.senDuty || 0)) {
+      newTeacher.senDuty = (newTeacher.senDuty || 0) + (senDuty - existingImpact.senDuty)
+      existingImpact.senDuty = senDuty
+    }
+    if (generalDuty > (existingImpact.generalDuty || 0)) {
+      newTeacher.generalDuty = (newTeacher.generalDuty || 0) + (generalDuty - existingImpact.generalDuty)
+      existingImpact.generalDuty = generalDuty
+    }
+    return newTeacher
+  }
 
   newTeacher.occurrence = (newTeacher.occurrence || 0) + 1
   newTeacher.totalInvigilationTime = (newTeacher.totalInvigilationTime || 0) + timeAdded
@@ -113,7 +129,8 @@ function getOrderedAvailableTeachers(
   // Sorting Logic
   const sortFunction = (t) => {
        const lessonCount = getPeriodLessonCount(t.teacher, exam, unavailableArrays)
-       let score = (t.totalInvigilationTime + lessonCount * 55) / 120
+       const subTime = (t.originalSubstitutionNumber || 0) * 55
+       let score = (t.totalInvigilationTime + subTime + lessonCount * 55) / 120
        
        if (preferedTeachers && preferedTeachers.includes(t.teacher)) {
          score = Math.round(score * PREFERED_RATE)

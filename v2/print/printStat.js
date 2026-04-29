@@ -1,10 +1,12 @@
 const _ = require('lodash')
 const { calculateTeacherStats } = require('../logic')
-const { getSheetData, appendRows, batchClearData } = require('../googleSheet')
+const { getSheetData, appendRows, batchClearData, clearSheetFormatting, autoResizeRows, setWrapText } = require('../googleSheet')
 
 async function printStat(assignedExaminations) {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
   await batchClearData(SPREADSHEET_ID, 'stat!A:Z')
+  await clearSheetFormatting(SPREADSHEET_ID, 'stat')
+  await setWrapText(SPREADSHEET_ID, 'stat')
 
   const rawTeachers = await getSheetData(SPREADSHEET_ID, 'teachers!A:D')
   // Initial mapping
@@ -12,7 +14,7 @@ async function printStat(assignedExaminations) {
     return {
       ...t,
       originalSubstitutionNumber: parseInt(t.substitutionNumber) || 0,
-      totalInvigilationTime: (parseInt(t.substitutionNumber) || 0) * 55 || 0,
+      totalInvigilationTime: 0,
       generalDuty: 0,
       occurrence: 0
     }
@@ -58,6 +60,7 @@ async function printStat(assignedExaminations) {
   }, [])
 
   await appendRows(SPREADSHEET_ID, 'stat!A:A', _.orderBy(rows, [3], ['desc']))
+  await autoResizeRows(SPREADSHEET_ID, 'stat')
 }
 
 module.exports = { printStat }

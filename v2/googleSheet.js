@@ -97,12 +97,67 @@ async function clearSheetFormatting(spreadsheetId, sheetName) {
     auth,
     spreadsheetId,
     resource: {
-      requests: [{
-        updateCells: {
-          range: { sheetId },
-          fields: 'userEnteredFormat.backgroundColor'
+      requests: [
+        {
+          updateCells: {
+            range: { sheetId },
+            fields: 'userEnteredFormat.backgroundColor'
+          }
         }
-      }]
+      ]
+    }
+  })
+}
+
+async function autoResizeRows(spreadsheetId, sheetName) {
+  const auth = await getAuth()
+  const getResponse = await sheets.spreadsheets.get({ auth, spreadsheetId })
+  const sheet = getResponse.data.sheets.find(s => s.properties.title === sheetName)
+  if (!sheet) return
+  const sheetId = sheet.properties.sheetId
+
+  await sheets.spreadsheets.batchUpdate({
+    auth,
+    spreadsheetId,
+    resource: {
+      requests: [
+        {
+          autoResizeDimensions: {
+            dimensions: {
+              sheetId,
+              dimension: 'ROWS'
+            }
+          }
+        }
+      ]
+    }
+  })
+}
+
+async function setWrapText(spreadsheetId, sheetName) {
+  const auth = await getAuth()
+  const getResponse = await sheets.spreadsheets.get({ auth, spreadsheetId })
+  const sheet = getResponse.data.sheets.find(s => s.properties.title === sheetName)
+  if (!sheet) return
+  const sheetId = sheet.properties.sheetId
+
+  await sheets.spreadsheets.batchUpdate({
+    auth,
+    spreadsheetId,
+    resource: {
+      requests: [
+        {
+          repeatCell: {
+            range: { sheetId },
+            cell: {
+              userEnteredFormat: {
+                wrapStrategy: 'WRAP'
+              }
+            },
+            fields: 'userEnteredFormat.wrapStrategy'
+          }
+        }
+      ]
     }
   })
 }
@@ -198,5 +253,7 @@ module.exports = {
   appendRows,
   clearSheetFormatting,
   formatRowsGray,
-  formatHeaderRow
+  formatHeaderRow,
+  autoResizeRows,
+  setWrapText
 }

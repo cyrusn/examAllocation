@@ -1,11 +1,13 @@
 const _ = require('lodash')
 const { DateTime } = require('luxon')
 const { getSenDuration } = require('../utils')
-const { appendRows, batchClearData } = require('../googleSheet')
+const { appendRows, batchClearData, clearSheetFormatting, autoResizeRows, setWrapText } = require('../googleSheet')
 
 async function printTeacherView(assignedExaminations) {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
   await batchClearData(SPREADSHEET_ID, 'resultByTeacher!A:Z')
+  await clearSheetFormatting(SPREADSHEET_ID, 'resultByTeacher')
+  await setWrapText(SPREADSHEET_ID, 'resultByTeacher')
 
   const groupedExaminations = assignedExaminations.reduce(
     (prev, assignedExamination) => {
@@ -106,6 +108,7 @@ async function printTeacherView(assignedExaminations) {
   })
   console.log('Printing ResultByTeacher')
   await appendRows(SPREADSHEET_ID, 'resultByTeacher!A:A', excelPrintView)
+  await autoResizeRows(SPREADSHEET_ID, 'resultByTeacher')
 }
 
 module.exports = { printTeacherView }

@@ -9,7 +9,7 @@ function parseTeachers(rawTeachers) {
   return rawTeachers.map((t) => ({
     ...t,
     originalSubstitutionNumber: parseInt(t.substitutionNumber) || 0,
-    totalInvigilationTime: (parseInt(t.substitutionNumber) || 0) * 55 || 0,
+    totalInvigilationTime: 0,
     generalDuty: 0,
     occurrence: 0,
     exams: [],// Track assigned exams
@@ -39,7 +39,7 @@ function parseUnavailables(rawUnavailables) {
 function parseExaminations(rawExaminations) {
   return _(rawExaminations)
     .filter(({ skip, id }) => !skip && id)
-    .orderBy([(a) => !!a.binding], ['desc'])
+    .orderBy([(a) => (a.binding && a.binding.length > 0) ? 1 : 0], ['asc'])
     .reduce((prev, exam) => {
       const { binding, id, session, classlevel, title, startDateTime } = exam
       
@@ -48,16 +48,55 @@ function parseExaminations(rawExaminations) {
       const paperInChargesList = parseList(exam.paperInCharges)
       const duration = parseInt(exam.duration)
       const classcodes = parseList(exam.classcodes)
+      const locations = parseList(exam.locations || exam.location)
 
       classcodes.forEach((classcode, index) => {
-        // Expand binding IDs
-        const bindingIds = binding 
-          ? parseList(binding).map(a => `${a.trim()}-${index}`)
-          : []
+        let location = locations[index] || locations[0] || ''
+        location = location.trim()
+        if (location.toUpperCase() === 'HALL') location = 'HALL'
+        
+        const currentId = `${id}-${index}`
+        const isSen = /\d{1}S(R|T)?/.test(classcode)
 
-        // Locations
-        const locations = String(exam.locations).replaceAll(/\n|\s|\r/g, '').split(',')
-        const location = locations[index]
+        // Binding Logic
+        let bindingIds = []
+        
+        if (binding === 'false' || binding === false) {
+          // Rule 2: Explicitly false means no binding
+          bindingIds = []
+        } else if (binding) {
+          // Rule 1: Explicit IDs provided
+          const targetRowIds = parseList(binding)
+          targetRowIds.forEach(targetRowId => {
+            // Find ALL classes in the target row (regardless of session/time)
+            const rowExams = prev.filter(e => 
+              e.id.startsWith(`${targetRowId.trim()}-`)
+            )
+
+            if (rowExams.length > 0) {              // Look for a specific match in the same room
+              const master = rowExams.find(e => e.location === location)
+              if (master) {
+                bindingIds.push(master.id)
+              } else {
+                console.warn(`[Binding Warning] Row ${targetRowId} found, but none of its classes are in room ${location}. Binding skipped for ${currentId}.`)
+              }
+            } else {
+              console.warn(`[Binding Warning] Target row ${targetRowId} not found or occurs at a different time. Binding skipped for ${currentId}.`)
+            }
+          })
+        } 
+        
+        // Rule 3: Auto-bind SEN classes (only if not already bound via Rule 1)
+        if (isSen && bindingIds.length === 0 && binding !== 'false' && binding !== false) {
+          const autoMaster = prev.find(e => 
+            e.location === location && 
+            e.startDateTime.substring(0, 10) === (startDateTime || '').substring(0, 10) &&
+            /\d{1}S(R|T)?/.test(e.classcode)
+          )
+          if (autoMaster) {
+            bindingIds.push(autoMaster.id)
+          }
+        }
 
         // Invigilator Count Logic
         const reqInvList = parseList(String(exam.requiredInvigilators))

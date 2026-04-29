@@ -63,11 +63,13 @@ function validateCollisions(assignedExaminations) {
           .filter(t => t !== 'UNASSIGNED')
           
         if (shared.length > 0) {
-          const isBound =
-            (examA.binding && examA.binding.some((bId) => bId === examB.id)) ||
-            (examB.binding && examB.binding.some((bId) => bId === examA.id))
-
           if (examA.id === examB.id) continue
+
+          // Check if they are in the same binding group
+          const isBound =
+            (examA.binding && examA.binding.includes(examB.id)) ||
+            (examB.binding && examB.binding.includes(examA.id)) ||
+            (examA.binding && examB.binding && _.intersection(examA.binding, examB.binding).length > 0)
 
           if (!isBound) {
             collisions.push({ examA, examB, teachers: shared })
