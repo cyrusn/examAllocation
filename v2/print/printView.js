@@ -134,8 +134,11 @@ async function printView(assignedExaminations, teachers = []) {
       const secondKeys = _(groupedExaminations[date][session])
         .keys()
         .sortBy((key) => {
+          if (key === 'G') return -2 // Guidance/Morning Duty first
+          if (key === 'FI') return 998 // Floor Invigilator at the end of the session
+          if (key === 'SB') return 999 // Standby very last
           const index = orderKeys.indexOf(key)
-          return index === -1 ? 999 : index
+          return index === -1 ? 500 : index
         })
 
       secondKeys.forEach((secondKey, j) => {

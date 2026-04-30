@@ -70,13 +70,15 @@ function progressLog(progress) {
   const emptyWidth = barWidth - filledWidth
   const progressBar = '█'.repeat(filledWidth) + '▒'.repeat(emptyWidth)
   const result = `[${progressBar}] ${Math.ceil(progress * 100)}%`
-  process.stdout.clearLine()
-  process.stdout.cursorTo(0)
-  process.stdout.write(`Progress: ${result}`)
-  if (progress == 1) console.log()
+  if (process.stdout.isTTY) {
+    process.stdout.clearLine()
+    process.stdout.cursorTo(0)
+    process.stdout.write(`Progress: ${result}`)
+  }
+  if (progress == 1 && process.stdout.isTTY) console.log()
 }
 
-const parseList = (str) => (str || '').replaceAll(/\n|\s|\r/g, '').split(',').filter(Boolean)
+const parseList = (str) => (str || '').split(',').map(s => s.trim())
 
 module.exports = {
   getIntervalBySlot,

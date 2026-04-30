@@ -22,13 +22,19 @@ function calculateExamImpact(exam) {
   const isSen = /\d{1}S(R|T)?/.test(exam.classcode)
   const duration = isSen ? senDuration : exam.duration
 
-  let timeAdded = duration
+  let timeAdded = exam.isDurationNA ? 0 : duration
   let generalDuty = 0
   let senDuty = 0
   
-  if (GENERAL_DUTIES.includes(exam.classlevel)) {
+  if (exam.isStandby) {
+    timeAdded = 0
     generalDuty = 1
-    if (exam.classlevel === 'G') timeAdded = 30
+  } else if (exam.isGuidance || exam.isMorning) {
+    timeAdded = 60
+    generalDuty = 1
+  } else if (GENERAL_DUTIES.includes(exam.classlevel)) {
+    generalDuty = 1
+    if (exam.classlevel === 'G' && !exam.isDurationNA) timeAdded = 30
   }
 
   if (isSen) {
@@ -141,27 +147,36 @@ function getOrderedAvailableTeachers(
   }
 
   // Sorting Priorities
+  
+  // Return the index in preferedTeachers to maintain user's requested order (PIC first)
+  const isPreferred = (t) => {
+    if (!preferedTeachers || preferedTeachers.length === 0) return 999;
+    const idx = preferedTeachers.indexOf(t.teacher);
+    return idx === -1 ? 999 : idx;
+  };
+
   if ([...GENERAL_DUTIES, 'FI'].includes(classlevel)) {
     return _.orderBy(
       candidates,
-      ['generalDuty', sortFunction, 'occurrence'],
-      ['asc', 'asc', 'asc']
+      [isPreferred, 'generalDuty', sortFunction, 'occurrence'],
+      ['asc', 'asc', 'asc', 'asc']
     )
   }
 
   if (isSen) {
     return _.orderBy(
       candidates,
-      ['senDuty', sortFunction, 'occurrence'],
-      ['asc', 'asc', 'asc']
+      [isPreferred, 'senDuty', sortFunction, 'occurrence'],
+      ['asc', 'asc', 'asc', 'asc']
     )
   }
 
   return _.orderBy(candidates, [
+    isPreferred,
     sortFunction,
     'occurrence',
     'generalDuty'
-  ], ['asc', 'asc', 'asc'])
+  ], ['asc', 'asc', 'asc', 'asc'])
 }
 
 /**

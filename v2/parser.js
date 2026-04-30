@@ -46,8 +46,36 @@ function parseExaminations(rawExaminations) {
       const invigilators = parseList(exam.invigilators)
       const preferedTeachers = parseList(exam.preferedTeachers)
       const paperInChargesList = parseList(exam.paperInCharges)
-      const duration = parseInt(exam.duration)
-      const classcodes = parseList(exam.classcodes)
+      
+      const titleUpper = (exam.title || '').toUpperCase()
+      const isStandby = titleUpper.includes('STANDBY') || exam.classlevel === 'SB'
+      const isGuidance = titleUpper.includes('GUIDANCE DUTY') || exam.classlevel === 'G'
+      const isMorning = titleUpper.includes('MORNING')
+      
+      let duration = parseInt(exam.duration)
+      const isDurationNA = isNaN(duration)
+      
+      if (isDurationNA || isStandby || isGuidance || isMorning) {
+        duration = 180
+      }
+
+      let finalSession = (session !== undefined && session !== null && session !== '') ? parseInt(session) : undefined
+      
+      const isFI = exam.classlevel === 'FI'
+
+      // Force Morning Duty and Guidance Duty to start of the day
+      if (isGuidance || isMorning) {
+        finalSession = 0
+      } else if (finalSession === undefined) {
+         // Default session assignment
+         if (isStandby || isFI) {
+           finalSession = 99 // End of the day
+         } else {
+           finalSession = 99 // Default for everything else
+         }
+      }
+
+      const classcodes = parseList(exam.classcodes).filter(Boolean)
       const locations = parseList(exam.locations || exam.location)
 
       classcodes.forEach((classcode, index) => {
@@ -66,7 +94,7 @@ function parseExaminations(rawExaminations) {
           bindingIds = []
         } else if (binding) {
           // Rule 1: Explicit IDs provided
-          const targetRowIds = parseList(binding)
+          const targetRowIds = parseList(binding).filter(Boolean)
           targetRowIds.forEach(targetRowId => {
             // Find ALL classes in the target row (regardless of session/time)
             const rowExams = prev.filter(e => 
@@ -86,12 +114,13 @@ function parseExaminations(rawExaminations) {
           })
         } 
         
-        // Rule 3: Auto-bind SEN classes (only if not already bound via Rule 1)
-        if (isSen && bindingIds.length === 0 && binding !== 'false' && binding !== false) {
+        // Rule 3: Auto-bind across the whole day for same room (excluding special duties)
+        const isSpecialDuty = isStandby || isFI || isGuidance || isMorning;
+        if (!isSpecialDuty && location && bindingIds.length === 0 && binding !== 'false' && binding !== false) {
           const autoMaster = prev.find(e => 
             e.location === location && 
             e.startDateTime.substring(0, 10) === (startDateTime || '').substring(0, 10) &&
-            /\d{1}S(R|T)?/.test(e.classcode)
+            !e.isStandby && !e.isFI && !e.isGuidance && !e.isMorning
           )
           if (autoMaster) {
             bindingIds.push(autoMaster.id)
@@ -119,20 +148,31 @@ function parseExaminations(rawExaminations) {
           assignedPaperInCharges = paperInChargesList[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
         }
 
+        // Preferred teachers (positional and separated by pipe)
+        let assignedPreferedTeachers = []
+        if (preferedTeachers[index]) {
+          assignedPreferedTeachers = preferedTeachers[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
+        }
+
         prev.push({
           binding: bindingIds,
           id: `${id}-${index}`,
-          session: session || 99,
+          session: finalSession,
           classlevel,
           classcode,
           title,
           startDateTime,
           duration,
+          isDurationNA,
+          isStandby,
+          isGuidance,
+          isMorning,
+          isFI,
           requiredInvigilators,
           paperInCharges: assignedPaperInCharges,
           location,
           invigilators: preAssignedInvigilators,
-          preferedTeachers
+          preferedTeachers: assignedPreferedTeachers
         })
       })
 
