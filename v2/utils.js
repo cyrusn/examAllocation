@@ -78,7 +78,7 @@ function progressLog(progress) {
   if (progress == 1 && process.stdout.isTTY) console.log()
 }
 
-const parseList = (str) => (str || '').split(',').map(s => s.trim())
+const parseList = (str) => (str || '').toString().split(/,|\n/).map(s => s.trim()).filter(Boolean)
 
 module.exports = {
   getIntervalBySlot,

@@ -3,37 +3,49 @@ const {
   getOrderedAvailableTeachers,
   assignExamToTeacher
 } = require('./logic')
-const { progressLog } = require('./utils')
+const { progressLog, getExamInterval } = require('./utils')
 
-/**
- * Runs the main allocation algorithm.
- * 
- * @param {Array} examinations - List of exam objects
- * @param {Array} teachers - List of teacher objects
- * @param {Array} unavailableArrays - List of unavailable time slots
- * @returns {Array} assignedExaminations - List of exams with assigned invigilators
- */
-function allocateExaminations(examinations, teachers, unavailableArrays) {
-  const assignedExaminations = examinations.filter(e => e.invigilators.length > 0)
-  const totalExams = examinations.length
+function countUnassigned(assignedExaminations) {
+  return assignedExaminations.reduce((acc, e) => acc + e.invigilators.filter(i => i === 'UNASSIGNED').length, 0)
+}
+
+function applyReordering(examinations) {
+  const dateDensities = {}
+  examinations.forEach(e => {
+    const date = e.startDateTime.substring(0, 10)
+    if (!dateDensities[date]) dateDensities[date] = 0
+    if (!e.binding || e.binding.length === 0) {
+      dateDensities[date] += (e.requiredInvigilators || 0)
+    }
+  })
+
+  return _.orderBy(examinations, [
+    e => e.binding && e.binding.length > 0 ? 1 : 0, // Followers last
+    e => dateDensities[e.startDateTime.substring(0, 10)] || 0, // Date Density (Desc)
+    e => examinations.filter(f => f.binding && f.binding.includes(e.id)).length, // Bindings count (Desc)
+    e => e.requiredInvigilators, // Size (Desc)
+    e => e.duration, // Duration (Desc)
+    e => e.startDateTime, // Time (Asc)
+    e => e.id // ID (Asc)
+  ], ['asc', 'desc', 'desc', 'desc', 'desc', 'asc', 'asc'])
+}
+
+function performGreedyAllocation(examinationsList, teachers, unavailableArrays) {
+  const assignedExaminations = examinationsList.filter(e => e.invigilators.length > 0)
+  const totalExams = examinationsList.length
   let processedCount = 0
 
   // Update teachers with pre-assigned exams
   initializeAssignments(teachers, assignedExaminations)
 
-  // Iterate through all exams
-  for (const exam of examinations) {
+  for (const exam of examinationsList) {
     processedCount++
     progressLog(processedCount / totalExams)
 
-    // Identify Bindings
-    const bindedExams = examinations.filter(e => e.binding.includes(exam.id))
+    const bindedExams = examinationsList.filter(e => e.binding.includes(exam.id))
     
-    // Sync state: Followers must follow the master's rule and share its invigilators
     bindedExams.forEach(follower => {
       follower.requiredInvigilators = exam.requiredInvigilators
-      
-      // Ensure follower has all invigilators the master has
       exam.invigilators.forEach(inv => {
         if (!follower.invigilators.includes(inv)) {
           follower.invigilators.push(inv)
@@ -42,31 +54,178 @@ function allocateExaminations(examinations, teachers, unavailableArrays) {
     })
 
     const currentInvigilatorCount = exam.invigilators.length
-    if (currentInvigilatorCount >= exam.requiredInvigilators) {
-      continue
-    }
+    if (currentInvigilatorCount >= exam.requiredInvigilators) continue
 
-    // Find Candidates
     const candidates = findCandidatesWithRetry(teachers, unavailableArrays, assignedExaminations, exam, bindedExams)
-
-    // Select Teachers (strictly dictated by the master exam's requirements)
     const needed = exam.requiredInvigilators - currentInvigilatorCount
     const selected = selectTeachers(candidates, needed, exam)
 
     if (selected.length === 0) continue
 
-    // Apply Assignments
     applyAssignments(teachers, [exam, ...bindedExams], selected);
 
-    // Track state
     [exam, ...bindedExams].forEach(e => {
       if (!assignedExaminations.includes(e)) {
         assignedExaminations.push(e)
       }
     })
   }
-  
   return assignedExaminations
+}
+
+/**
+ * Runs the main allocation algorithm.
+ * 
+ * @param {Array} originalExaminations - List of exam objects
+ * @param {Array} originalTeachers - List of teacher objects
+ * @param {Array} unavailableArrays - List of unavailable time slots
+ * @returns {Array} assignedExaminations - List of exams with assigned invigilators
+ */
+function allocateExaminations(originalExaminations, originalTeachers, unavailableArrays) {
+  console.log('\n--- State 0: Normal Assignment ---')
+  let examinations = _.cloneDeep(originalExaminations)
+  let teachers = _.cloneDeep(originalTeachers)
+  
+  let assignedExaminations = performGreedyAllocation(examinations, teachers, unavailableArrays)
+  let unassignedCount = countUnassigned(assignedExaminations)
+  
+  if (unassignedCount > 0) {
+    console.log(`\nState 0 resulted in ${unassignedCount} UNASSIGNED slots.`)
+    console.log('\n--- State 1: Applying Idea 1 (Deterministic Multi-Factor Reordering) ---')
+    
+    // Reset state to original
+    examinations = _.cloneDeep(originalExaminations)
+    teachers = _.cloneDeep(originalTeachers)
+    
+    const sortedExaminations = applyReordering(examinations)
+    assignedExaminations = performGreedyAllocation(sortedExaminations, teachers, unavailableArrays)
+    unassignedCount = countUnassigned(assignedExaminations)
+  }
+
+  if (unassignedCount > 0) {
+    console.log(`\nState 1 resulted in ${unassignedCount} UNASSIGNED slots.`)
+    console.log('\n--- State 2: Applying Idea 2 (1-Degree Swap Repair) ---')
+    repairAssignments(teachers, assignedExaminations, unavailableArrays, originalExaminations)
+  }
+
+  return assignedExaminations
+}
+
+/**
+ * Idea 2: Local Repair Swap
+ */
+function repairAssignments(teachers, assignedExaminations, unavailableArrays, originalExaminations) {
+  let swapped = true
+  let loopCount = 0
+  const MAX_LOOPS = 50
+  let totalSwaps = 0
+
+  while (swapped && loopCount < MAX_LOOPS) {
+    swapped = false
+    loopCount++
+
+    // 1. Find an exam with UNASSIGNED
+    const examWithGap = assignedExaminations.find(e => e.invigilators.includes('UNASSIGNED'))
+    if (!examWithGap) break
+
+    // Define the group of the gap exam
+    const e1Binds = assignedExaminations.filter(e => e.binding && e.binding.includes(examWithGap.id))
+    const e1Group = [examWithGap, ...e1Binds]
+    const e1Interval = getExamInterval(examWithGap)
+
+    // 2. Find overlapping exams
+    const overlappingExams = assignedExaminations.filter(e => {
+      if (e1Group.some(g => g.id === e.id)) return false
+      return getExamInterval(e).overlaps(e1Interval)
+    })
+
+    // Group overlapping exams by master
+    const overlappingMasters = _.uniq(overlappingExams.map(e => {
+      if (e.binding && e.binding.length > 0) {
+        const master = assignedExaminations.find(m => m.id === e.binding[0])
+        return master || e
+      }
+      return e
+    }))
+
+    let foundSwap = false
+
+    for (const E2 of overlappingMasters) {
+      const e2Binds = assignedExaminations.filter(e => e.binding && e.binding.includes(E2.id))
+      const e2Group = [E2, ...e2Binds]
+
+      const e2Teachers = E2.invigilators.filter(id => id !== 'UNASSIGNED')
+      
+      for (const tBusyId of e2Teachers) {
+        // Prevent swapping out pre-assigned teachers
+        const origE2 = originalExaminations.find(e => e.id === E2.id)
+        const preAssignedTeachers = origE2 ? origE2.invigilators : []
+        if (preAssignedTeachers.includes(tBusyId)) continue
+
+        // Create a hypothetical state without E2 group
+        const assignedWithoutE2Group = assignedExaminations.filter(e => !e2Group.some(g => g.id === e.id))
+        
+        // Is tBusyId valid for E1 group in this state?
+        const e1Cands = findCommonCandidates(teachers, unavailableArrays, assignedWithoutE2Group, examWithGap, e1Binds, { strict: false })
+        if (!e1Cands.some(t => t.teacher === tBusyId)) continue
+
+        // 3. Find a replacement for E2
+        const e2Cands = findCommonCandidates(teachers, unavailableArrays, assignedWithoutE2Group, E2, e2Binds, { strict: false })
+        
+        // Replacement must not be the busy teacher, nor someone already assigned to E1
+        const tFreeObj = e2Cands.find(t => t.teacher !== tBusyId && !examWithGap.invigilators.includes(t.teacher))
+        
+        if (tFreeObj) {
+          const tFreeId = tFreeObj.teacher
+          
+          // 4. Execute Swap
+          e1Group.forEach(e => {
+            const idx = e.invigilators.indexOf('UNASSIGNED')
+            if (idx !== -1) e.invigilators[idx] = tBusyId
+          })
+          
+          e2Group.forEach(e => {
+            const idx = e.invigilators.indexOf(tBusyId)
+            if (idx !== -1) e.invigilators[idx] = tFreeId
+          })
+          
+          rebuildTeacherStats(teachers, assignedExaminations)
+          swapped = true
+          foundSwap = true
+          totalSwaps++
+          console.log(`  -> Swap Success: Moved ${tBusyId} from ${E2.id} to ${examWithGap.id}. Filled ${E2.id} with ${tFreeId}.`)
+          break
+        }
+      }
+      if (foundSwap) break
+    }
+  }
+  
+  if (totalSwaps > 0) {
+    console.log(`Completed Idea 2 Repair: Successfully performed ${totalSwaps} swap(s).`)
+  } else {
+    console.log(`Completed Idea 2 Repair: Could not find any valid swaps to perform.`)
+  }
+}
+
+function rebuildTeacherStats(teachers, assignedExaminations) {
+  teachers.forEach(t => {
+    t.exams = []
+    t.totalInvigilationTime = 0
+    t.generalDuty = 0
+    t.senDuty = 0
+    t.occurrence = 0
+  })
+  
+  assignedExaminations.forEach(exam => {
+    exam.invigilators.forEach(inv => {
+      if (inv === 'UNASSIGNED') return
+      const tIndex = teachers.findIndex(t => t.teacher === inv)
+      if (tIndex !== -1) {
+        teachers[tIndex] = assignExamToTeacher(teachers[tIndex], exam)
+      }
+    })
+  })
 }
 
 /**

@@ -8,7 +8,7 @@ async function printStat(assignedExaminations) {
   await clearSheetFormatting(SPREADSHEET_ID, 'stat')
   await setWrapText(SPREADSHEET_ID, 'stat')
 
-  const rawTeachers = await getSheetData(SPREADSHEET_ID, 'teachers!A:D')
+  const rawTeachers = await getSheetData(SPREADSHEET_ID, 'teachers!A:E')
   // Initial mapping
   let teachers = rawTeachers.map((t) => {
     return {

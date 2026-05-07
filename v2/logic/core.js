@@ -135,7 +135,8 @@ function getOrderedAvailableTeachers(
   // Sorting Logic
   const sortFunction = (t) => {
        const lessonCount = getPeriodLessonCount(t.teacher, exam, unavailableArrays)
-       const subTime = (t.originalSubstitutionNumber || 0) * 55
+       const effectiveSubNumber = t.ignoreSubstitutionNumber ? 0 : (t.originalSubstitutionNumber || 0)
+       const subTime = effectiveSubNumber * 55
        let score = (t.totalInvigilationTime + subTime + lessonCount * 55) / 120
        
        if (preferedTeachers && preferedTeachers.includes(t.teacher)) {

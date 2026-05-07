@@ -77,6 +77,18 @@ const main = async () => {
     console.log('Collision Validation Passed.')
   }
 
+  // Check for UNASSIGNED
+  const unassignedExams = finalAssignedExaminations.filter(e => e.invigilators.includes('UNASSIGNED'))
+  if (unassignedExams.length > 0) {
+    console.error('\n⚠️ WARNING: Some exams could not be fully assigned.')
+    unassignedExams.forEach(e => {
+      const missingCount = e.invigilators.filter(i => i === 'UNASSIGNED').length
+      console.log(`- ${e.id} (${e.title}) on ${e.startDateTime.substring(0, 10)} needs ${missingCount} more invigilator(s).`)
+    })
+  } else {
+    console.log('\n✅ All exams were successfully assigned.')
+  }
+
   // 6. Output
   if (!fs.existsSync(OUTPUT_FILE_PATH)) {
     fs.mkdirSync(OUTPUT_FILE_PATH, { recursive: true })

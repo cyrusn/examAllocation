@@ -6,14 +6,18 @@ const { INVIGILATOR_RULES, DEFAULT_INVIGILATOR_COUNT } = require('./config')
  * Transforms raw teacher data from sheet into application objects.
  */
 function parseTeachers(rawTeachers) {
-  return rawTeachers.map((t) => ({
-    ...t,
-    originalSubstitutionNumber: parseInt(t.substitutionNumber) || 0,
-    totalInvigilationTime: 0,
-    generalDuty: 0,
-    occurrence: 0,
-    exams: [],// Track assigned exams
-  }))
+  return rawTeachers.map((t) => {
+    const ignoreSub = String(t.ignoreSubstitutionNumber).trim().toLowerCase() === 'true'
+    return {
+      ...t,
+      ignoreSubstitutionNumber: ignoreSub,
+      originalSubstitutionNumber: parseInt(t.substitutionNumber) || 0,
+      totalInvigilationTime: 0,
+      generalDuty: 0,
+      occurrence: 0,
+      exams: [],// Track assigned exams
+    }
+  })
 }
 
 /**
@@ -75,104 +79,112 @@ function parseExaminations(rawExaminations) {
          }
       }
 
+      const startDateTimes = parseList(String(exam.startDateTime).replace(/\n/g, ',')).filter(Boolean)
+      const ids = parseList(String(exam.id).replace(/\n/g, ',')).filter(Boolean)
       const classcodes = parseList(exam.classcodes).filter(Boolean)
       const locations = parseList(exam.locations || exam.location)
 
-      classcodes.forEach((classcode, index) => {
-        let location = locations[index] || locations[0] || ''
-        location = location.trim()
-        if (location.toUpperCase() === 'HALL') location = 'HALL'
-        
-        const currentId = `${id}-${index}`
-        const isSen = /\d{1}S(R|T)?/.test(classcode)
+      startDateTimes.forEach((startDateTime, dateIndex) => {
+        classcodes.forEach((classcode, index) => {
+          let location = locations[index] || locations[0] || ''
+          location = location.trim()
+          if (location.toUpperCase() === 'HALL') location = 'HALL'
+          
+          const currentBaseId = ids[dateIndex] || ids[0]
+          const currentId = `${currentBaseId}-${index}`
+          const isSen = /\d{1}S(R|T)?/.test(classcode)
 
-        // Binding Logic
-        let bindingIds = []
-        
-        if (binding === 'false' || binding === false) {
-          // Rule 2: Explicitly false means no binding
-          bindingIds = []
-        } else if (binding) {
-          // Rule 1: Explicit IDs provided
-          const targetRowIds = parseList(binding).filter(Boolean)
-          targetRowIds.forEach(targetRowId => {
-            // Find ALL classes in the target row (regardless of session/time)
-            const rowExams = prev.filter(e => 
-              e.id.startsWith(`${targetRowId.trim()}-`)
-            )
+          // Binding Logic
+          let bindingIds = []
+          
+          if (binding === 'false' || binding === false) {
+            // Rule 2: Explicitly false means no binding
+            bindingIds = []
+          } else if (binding) {
+            // Rule 1: Explicit IDs provided
+            const targetRowIds = parseList(binding).filter(Boolean)
+            targetRowIds.forEach(targetRowId => {
+              // Find ALL classes in the target row (regardless of session/time)
+              const rowExams = prev.filter(e => 
+                e.id.startsWith(`${targetRowId.trim()}-`)
+              )
 
-            if (rowExams.length > 0) {              // Look for a specific match in the same room
-              const master = rowExams.find(e => e.location === location)
-              if (master) {
-                bindingIds.push(master.id)
+              if (rowExams.length > 0) {              // Look for a specific match in the same room and same day
+                const master = rowExams.find(e => 
+                  e.location === location && 
+                  e.startDateTime.substring(0, 10) === startDateTime.substring(0, 10)
+                )
+                if (master) {
+                  bindingIds.push(master.id)
+                } else {
+                  console.warn(`[Binding Warning] Row ${targetRowId} found, but none of its classes are in room ${location} on ${startDateTime.substring(0, 10)}. Binding skipped for ${currentId}.`)
+                }
               } else {
-                console.warn(`[Binding Warning] Row ${targetRowId} found, but none of its classes are in room ${location}. Binding skipped for ${currentId}.`)
+                console.warn(`[Binding Warning] Target row ${targetRowId} not found or occurs at a different time. Binding skipped for ${currentId}.`)
               }
-            } else {
-              console.warn(`[Binding Warning] Target row ${targetRowId} not found or occurs at a different time. Binding skipped for ${currentId}.`)
+            })
+          } 
+          
+          // Rule 3: Auto-bind across the whole day for same room (excluding special duties)
+          const isSpecialDuty = isStandby || isFI || isGuidance || isMorning;
+          if (!isSpecialDuty && location && bindingIds.length === 0 && binding !== 'false' && binding !== false) {
+            const autoMaster = prev.find(e => 
+              e.location === location && 
+              e.startDateTime.substring(0, 10) === (startDateTime || '').substring(0, 10) &&
+              !e.isStandby && !e.isFI && !e.isGuidance && !e.isMorning
+            )
+            if (autoMaster) {
+              bindingIds.push(autoMaster.id)
             }
-          })
-        } 
-        
-        // Rule 3: Auto-bind across the whole day for same room (excluding special duties)
-        const isSpecialDuty = isStandby || isFI || isGuidance || isMorning;
-        if (!isSpecialDuty && location && bindingIds.length === 0 && binding !== 'false' && binding !== false) {
-          const autoMaster = prev.find(e => 
-            e.location === location && 
-            e.startDateTime.substring(0, 10) === (startDateTime || '').substring(0, 10) &&
-            !e.isStandby && !e.isFI && !e.isGuidance && !e.isMorning
-          )
-          if (autoMaster) {
-            bindingIds.push(autoMaster.id)
           }
-        }
 
-        // Invigilator Count Logic
-        const reqInvList = parseList(String(exam.requiredInvigilators))
-        let requiredInvigilators = parseInt(reqInvList[index])
+          // Invigilator Count Logic
+          const reqInvList = parseList(String(exam.requiredInvigilators))
+          let requiredInvigilators = parseInt(reqInvList[index])
 
-        if (!requiredInvigilators) {
-          const context = { classlevel, classcode, title, session, location, index }
-          const rule = INVIGILATOR_RULES.find(r => r.match(context))
-          requiredInvigilators = rule ? rule.count : DEFAULT_INVIGILATOR_COUNT
-        }
+          if (!requiredInvigilators) {
+            const context = { classlevel, classcode, title, session, location, index }
+            const rule = INVIGILATOR_RULES.find(r => r.match(context))
+            requiredInvigilators = rule ? rule.count : DEFAULT_INVIGILATOR_COUNT
+          }
 
-        // Pre-assigned invigilators
-        let preAssignedInvigilators = []
-        if (invigilators[index]) {
-          preAssignedInvigilators = invigilators[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
-        }
+          // Pre-assigned invigilators
+          let preAssignedInvigilators = []
+          if (invigilators[index]) {
+            preAssignedInvigilators = invigilators[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
+          }
 
-        let assignedPaperInCharges = []
-        if (paperInChargesList[index]) {
-          assignedPaperInCharges = paperInChargesList[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
-        }
+          let assignedPaperInCharges = []
+          if (paperInChargesList[index]) {
+            assignedPaperInCharges = paperInChargesList[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
+          }
 
-        // Preferred teachers (positional and separated by pipe)
-        let assignedPreferedTeachers = []
-        if (preferedTeachers[index]) {
-          assignedPreferedTeachers = preferedTeachers[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
-        }
+          // Preferred teachers (positional and separated by pipe)
+          let assignedPreferedTeachers = []
+          if (preferedTeachers[index]) {
+            assignedPreferedTeachers = preferedTeachers[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
+          }
 
-        prev.push({
-          binding: bindingIds,
-          id: `${id}-${index}`,
-          session: finalSession,
-          classlevel,
-          classcode,
-          title,
-          startDateTime,
-          duration,
-          isDurationNA,
-          isStandby,
-          isGuidance,
-          isMorning,
-          isFI,
-          requiredInvigilators,
-          paperInCharges: assignedPaperInCharges,
-          location,
-          invigilators: preAssignedInvigilators,
-          preferedTeachers: assignedPreferedTeachers
+          prev.push({
+            binding: bindingIds,
+            id: currentId,
+            session: finalSession,
+            classlevel,
+            classcode,
+            title,
+            startDateTime,
+            duration,
+            isDurationNA,
+            isStandby,
+            isGuidance,
+            isMorning,
+            isFI,
+            requiredInvigilators,
+            paperInCharges: assignedPaperInCharges,
+            location,
+            invigilators: preAssignedInvigilators,
+            preferedTeachers: assignedPreferedTeachers
+          })
         })
       })
 
