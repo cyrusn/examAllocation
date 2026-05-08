@@ -1,4 +1,5 @@
 const _ = require('lodash')
+const { DateTime } = require('luxon')
 const {
   GENERAL_DUTIES,
   TEACHER_ASSISTANTS,
@@ -54,6 +55,9 @@ function assignExamToTeacher(teacher, exam) {
   
   const newTeacher = { ...teacher, exams: [...(teacher.exams || [])] }
   
+  const examStart = DateTime.fromISO(startDateTime)
+  const examEnd = examStart.plus({ minutes: timeAdded })
+
   // Check for duplicate assignment (same session/loc/day)
   const existingImpact = newTeacher.exams.find(e => 
     e.session == session &&
@@ -62,11 +66,22 @@ function assignExamToTeacher(teacher, exam) {
   )
 
   if (existingImpact) {
-    // Update time to the longest one in this session/room
-    if (timeAdded > existingImpact.timeAdded) {
-      newTeacher.totalInvigilationTime = (newTeacher.totalInvigilationTime || 0) + (timeAdded - existingImpact.timeAdded)
-      existingImpact.timeAdded = timeAdded
+    const currentMinStart = DateTime.fromISO(existingImpact.minStart || existingImpact.startDateTime)
+    const currentMaxEnd = DateTime.fromISO(existingImpact.maxEnd || DateTime.fromISO(existingImpact.startDateTime).plus({ minutes: existingImpact.timeAdded }).toISO())
+    
+    const newMinStart = examStart < currentMinStart ? examStart : currentMinStart
+    const newMaxEnd = examEnd > currentMaxEnd ? examEnd : currentMaxEnd
+    
+    const newSpan = newMaxEnd.diff(newMinStart, 'minutes').minutes
+    const oldSpan = existingImpact.timeAdded
+
+    if (newSpan > oldSpan) {
+      newTeacher.totalInvigilationTime = (newTeacher.totalInvigilationTime || 0) + (newSpan - oldSpan)
+      existingImpact.timeAdded = newSpan
+      existingImpact.minStart = newMinStart.toISO()
+      existingImpact.maxEnd = newMaxEnd.toISO()
     }
+    
     // Update SEN/General duty flags if the new exam provides them
     if (senDuty > (existingImpact.senDuty || 0)) {
       newTeacher.senDuty = (newTeacher.senDuty || 0) + (senDuty - existingImpact.senDuty)
@@ -84,7 +99,11 @@ function assignExamToTeacher(teacher, exam) {
   newTeacher.generalDuty = (newTeacher.generalDuty || 0) + generalDuty
   newTeacher.senDuty = (newTeacher.senDuty || 0) + senDuty
   
-  newTeacher.exams.push(impact)
+  newTeacher.exams.push({
+    ...impact,
+    minStart: examStart.toISO(),
+    maxEnd: examEnd.toISO()
+  })
   
   return newTeacher
 }
