@@ -154,6 +154,11 @@ function parseExaminations(rawExaminations) {
             preAssignedInvigilators = invigilators[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
           }
 
+          // Ensure requiredInvigilators is at least the number of pre-assigned ones
+          if (preAssignedInvigilators.length > requiredInvigilators) {
+            requiredInvigilators = preAssignedInvigilators.length
+          }
+
           let assignedPaperInCharges = []
           if (paperInChargesList[index]) {
             assignedPaperInCharges = paperInChargesList[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
