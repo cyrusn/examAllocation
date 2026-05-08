@@ -55,6 +55,7 @@ function parseExaminations(rawExaminations) {
       const isStandby = titleUpper.includes('STANDBY') || exam.classlevel === 'SB'
       const isGuidance = titleUpper.includes('GUIDANCE DUTY') || exam.classlevel === 'G'
       const isMorning = titleUpper.includes('MORNING')
+      const isPractical = titleUpper.includes('IS PRACTICAL') || titleUpper.includes('CHI IV')
       
       let duration = parseInt(exam.duration)
       const isDurationNA = isNaN(duration)
@@ -86,7 +87,7 @@ function parseExaminations(rawExaminations) {
 
       startDateTimes.forEach((startDateTime, dateIndex) => {
         classcodes.forEach((classcode, index) => {
-          let location = locations[index] || locations[0] || ''
+          let location = isPractical ? (locations[0] || '') : (locations[index] || locations[0] || '')
           location = location.trim()
           if (location.toUpperCase() === 'HALL') location = 'HALL'
           

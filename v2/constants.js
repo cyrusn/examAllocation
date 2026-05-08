@@ -4,7 +4,8 @@ module.exports = {
   TEACHER_ASSISTANTS: ['OLN', 'WHS', 'WYY', 'EC', 'KYY', 'CKL', 'LS'],
   SKIP_CHECK_EXAMINATIONS: [
     { classlevel: 'S2', title: 'IS PRACTICAL' },
-    { classlevel: 'S1', title: 'IS PRACTICAL' }
+    { classlevel: 'S1', title: 'IS PRACTICAL' },
+    { title: 'CHI IV' }
   ],
   BUFFER_TIME: 15,
   F6_BUFFER_TIME: 15,
