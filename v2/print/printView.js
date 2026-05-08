@@ -187,7 +187,7 @@ async function printView(assignedExaminations, teachers = []) {
             const formattedDuration = `${duration} (${getSenDuration(examSession)})`
 
             let hallString = ''
-            const hall = classcodes.find(({ location, classcode }) => {
+            const hall = classcodes.find(({ location, classcode, title }) => {
               const hallGroup = [
                 'HALL',
                 '1/F',
@@ -197,8 +197,13 @@ async function printView(assignedExaminations, teachers = []) {
                 '5/F',
                 'IS LAB'
               ]
+              const titleUpper = (title || '').toUpperCase()
               const isGroupedClass = /^\d\s*[A-Za-z]\s*-\s*[A-Za-z]$/.test(classcode)
-              return hallGroup.includes((location || '').toUpperCase().trim()) || isGroupedClass
+              const isPractical = titleUpper.includes('IS PRACTICAL') || titleUpper.includes('CHI IV')
+              
+              // It is considered the "hall" (first column) if it's an explicitly grouped class string,
+              // it's in a known hall location, or it is a practical/oral exam that uses grouped locations.
+              return isGroupedClass || hallGroup.includes((location || '').toUpperCase().trim()) || isPractical
             })
 
             if (hall) {
