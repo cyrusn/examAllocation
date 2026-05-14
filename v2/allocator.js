@@ -21,10 +21,10 @@ function applyReordering(examinations) {
 
   return _.orderBy(examinations, [
     e => e.binding && e.binding.length > 0 ? 1 : 0, // Followers last
+    e => e.duration, // Duration (Desc) - Prioritized to match user requirement
     e => dateDensities[e.startDateTime.substring(0, 10)] || 0, // Date Density (Desc)
     e => examinations.filter(f => f.binding && f.binding.includes(e.id)).length, // Bindings count (Desc)
     e => e.requiredInvigilators, // Size (Desc)
-    e => e.duration, // Duration (Desc)
     e => e.startDateTime, // Time (Asc)
     e => e.id // ID (Asc)
   ], ['asc', 'desc', 'desc', 'desc', 'desc', 'asc', 'asc'])
@@ -85,10 +85,17 @@ function allocateExaminations(originalExaminations, originalTeachers, unavailabl
   console.log('\n--- State 0: Normal Assignment ---')
   let examinations = _.cloneDeep(originalExaminations)
   let teachers = _.cloneDeep(originalTeachers)
-  
+
+  // Sort State 0 by Duration (Descending) first to ensure the longest exams
+  // get access to the teachers with the absolute lowest current load.
+  examinations = _.orderBy(examinations, [
+    e => e.binding && e.binding.length > 0 ? 1 : 0, // Followers last
+    e => e.duration, // Duration (Desc)
+    e => e.startDateTime // Time (Asc)
+  ], ['asc', 'desc', 'asc'])
+
   let assignedExaminations = performGreedyAllocation(examinations, teachers, unavailableArrays)
-  let unassignedCount = countUnassigned(assignedExaminations)
-  
+  let unassignedCount = countUnassigned(assignedExaminations)  
   if (unassignedCount > 0) {
     console.log(`\nState 0 resulted in ${unassignedCount} UNASSIGNED slots.`)
     console.log('\n--- State 1: Applying Idea 1 (Deterministic Multi-Factor Reordering) ---')
