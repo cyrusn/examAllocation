@@ -159,10 +159,13 @@ function getOrderedAvailableTeachers(
        const lessonCount = getPeriodLessonCount(t.teacher, exam, unavailableArrays)
        const effectiveSubNumber = t.ignoreSubstitutionNumber ? 0 : (t.originalSubstitutionNumber || 0)
        const subTime = effectiveSubNumber * 55
-       // Add a significant weight for each general duty (e.g., equivalent to 60 minutes of invigilation)
-       // This penalizes teachers who have done standbys/guidance, pushing standard exams to those with 0 general duties.
-       const generalDutyPenalty = (t.generalDuty || 0) * 60
-       let score = (t.totalInvigilationTime + subTime + generalDutyPenalty + lessonCount * 55) / 120
+       
+       // Smarter Penalty: Only apply generalDuty penalty if the teacher has already cleared their debt.
+       // This allows teachers with negative credits (like MCW) to take duties without being blocked from regular exams.
+       const currentLoad = t.totalInvigilationTime + subTime
+       const generalDutyPenalty = currentLoad > 0 ? (t.generalDuty || 0) * 60 : 0
+       
+       let score = (currentLoad + generalDutyPenalty + lessonCount * 55) / 120
 
        if (preferedTeachers && preferedTeachers.includes(t.teacher)) {
          score = Math.round(score * PREFERED_RATE)

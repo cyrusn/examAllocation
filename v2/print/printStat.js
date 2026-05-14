@@ -38,7 +38,8 @@ async function printStat(assignedExaminations) {
       prev.push([
         'teacher',
         'originalSubstitutionNumber',
-        'substitutionNumber',
+        'assignedPeriods',
+        'Balance (Net)',
         'totalInvigilationTime',
         'occurrence',
         'generalDuty',
@@ -46,10 +47,12 @@ async function printStat(assignedExaminations) {
         'isSkip'
       ])
     }
+    const assignedPeriods = Math.round((totalInvigilationTime + 15) / 55)
     prev.push([
       teacher,
       originalSubstitutionNumber,
-      Math.round((totalInvigilationTime + 15) / 55),
+      assignedPeriods,
+      originalSubstitutionNumber + assignedPeriods,
       totalInvigilationTime,
       occurrence,
       generalDuty || 0,
