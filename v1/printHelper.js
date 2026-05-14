@@ -157,7 +157,9 @@ async function printStat(assignedExaminations) {
         'substitutionNumber',
         'totalInvigilationTime',
         'occurrence',
-        'generalDuty',
+        'fiDuty',
+        'sbDuty',
+        'guidanceDuty',
         'isSkip'
       ])
     }
@@ -167,7 +169,9 @@ async function printStat(assignedExaminations) {
       Math.round((totalInvigilationTime + 15) / 55),
       totalInvigilationTime,
       occurrence,
-      generalDuty,
+      t.fiDuty || 0,
+      t.sbDuty || 0,
+      t.guidanceDuty || 0,
       isSkip
     ])
     return prev
