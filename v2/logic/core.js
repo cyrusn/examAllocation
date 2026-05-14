@@ -134,7 +134,7 @@ function getOrderedAvailableTeachers(
   const { classlevel, classcode, preferedTeachers } = exam
   const examInterval = getExamInterval(exam)
   const isSen = /\d{1}S(R|T)?/.test(classcode)
-  const { strict } = options
+  const { strict, dailyLessonLimit } = options
 
   const candidates = teachers.filter(t => {
     // 1. Hard Constraints (Physical Impossibilities)
@@ -150,6 +150,12 @@ function getOrderedAvailableTeachers(
     const isTaOrDc = [...TEACHER_ASSISTANTS, ...DC_TEAM_MEMBERS].includes(t.teacher)
     if (GENERAL_DUTIES.includes(classlevel) && isTaOrDc) return false
 
+    // Daily Lesson Hard Limit (CLI configured)
+    const lessonsOnDay = getDayLessonsCount(t.teacher, exam, unavailableArrays)
+    if (dailyLessonLimit !== undefined && lessonsOnDay >= dailyLessonLimit) {
+      return false
+    }
+
     // 2. Soft Constraints (Relaxable)
     if (strict) {
        if (t.maxLoading && t.maxLoading <= t.occurrence) return false
@@ -157,8 +163,7 @@ function getOrderedAvailableTeachers(
        const assignedOnDay = getTeacherAssignedExamsOnSameDay(t.teacher, exam, assignedExaminations)
        if (assignedOnDay.length > 2) return false // Limit: >2 exams/day
 
-       const lessonsOnDay = getDayLessonsCount(t.teacher, exam, unavailableArrays)
-       if (lessonsOnDay > 4) return false // Limit: >4 lessons/day
+       if (dailyLessonLimit === undefined && lessonsOnDay > 4) return false // Default soft limit: >4 lessons/day
     }
 
     return true
@@ -166,7 +171,6 @@ function getOrderedAvailableTeachers(
 
   // Sorting Logic
   const sortFunction = (t) => {
-       const lessonCount = getDayLessonsCount(t.teacher, exam, unavailableArrays)
        const effectiveSubNumber = t.ignoreSubstitutionNumber ? 0 : (t.originalSubstitutionNumber || 0)
        const subTime = effectiveSubNumber * 55
 
@@ -176,7 +180,7 @@ function getOrderedAvailableTeachers(
        const totalSpecialDuties = (t.fiDuty || 0) + (t.sbDuty || 0) + (t.guidanceDuty || 0)
        const dutyPenalty = currentLoad > 0 ? totalSpecialDuties * 60 : 0
 
-       let score = (currentLoad + dutyPenalty + lessonCount * 55) / 120
+       let score = (currentLoad + dutyPenalty) / 120
 
        if (preferedTeachers && preferedTeachers.includes(t.teacher)) {
          score = Math.round(score * PREFERED_RATE)

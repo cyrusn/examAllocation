@@ -38,7 +38,7 @@ function applyReordering(examinations) {
   ], ['asc', 'asc', 'desc', 'asc', 'desc', 'desc', 'asc'])
 }
 
-function performGreedyAllocation(examinationsList, teachers, unavailableArrays) {
+function performGreedyAllocation(examinationsList, teachers, unavailableArrays, globalOptions = {}) {
   const assignedExaminations = examinationsList.filter(e => e.invigilators.length > 0)
   const totalExams = examinationsList.length
   let processedCount = 0
@@ -64,7 +64,7 @@ function performGreedyAllocation(examinationsList, teachers, unavailableArrays) 
     const currentInvigilatorCount = exam.invigilators.length
     if (currentInvigilatorCount >= exam.requiredInvigilators) continue
 
-    const candidates = findCandidatesWithRetry(teachers, unavailableArrays, assignedExaminations, exam, bindedExams)
+    const candidates = findCandidatesWithRetry(teachers, unavailableArrays, assignedExaminations, exam, bindedExams, globalOptions)
     const needed = exam.requiredInvigilators - currentInvigilatorCount
     const selected = selectTeachers(candidates, needed, exam)
 
@@ -89,7 +89,7 @@ function performGreedyAllocation(examinationsList, teachers, unavailableArrays) 
  * @param {Array} unavailableArrays - List of unavailable time slots
  * @returns {Array} assignedExaminations - List of exams with assigned invigilators
  */
-function allocateExaminations(originalExaminations, originalTeachers, unavailableArrays) {
+function allocateExaminations(originalExaminations, originalTeachers, unavailableArrays, globalOptions = {}) {
   console.log('\n--- State 0: Normal Assignment ---')
   let examinations = _.cloneDeep(originalExaminations)
   let teachers = _.cloneDeep(originalTeachers)
@@ -108,7 +108,7 @@ function allocateExaminations(originalExaminations, originalTeachers, unavailabl
     e => e.startDateTime 
   ], ['asc', 'asc', 'asc', 'desc', 'asc'])
 
-  let assignedExaminations = performGreedyAllocation(examinations, teachers, unavailableArrays)
+  let assignedExaminations = performGreedyAllocation(examinations, teachers, unavailableArrays, globalOptions)
   let unassignedCount = countUnassigned(assignedExaminations)  
   if (unassignedCount > 0) {
     console.log(`\nState 0 resulted in ${unassignedCount} UNASSIGNED slots.`)
@@ -119,14 +119,14 @@ function allocateExaminations(originalExaminations, originalTeachers, unavailabl
     teachers = _.cloneDeep(originalTeachers)
     
     const sortedExaminations = applyReordering(examinations)
-    assignedExaminations = performGreedyAllocation(sortedExaminations, teachers, unavailableArrays)
+    assignedExaminations = performGreedyAllocation(sortedExaminations, teachers, unavailableArrays, globalOptions)
     unassignedCount = countUnassigned(assignedExaminations)
   }
 
   if (unassignedCount > 0) {
     console.log(`\nState 1 resulted in ${unassignedCount} UNASSIGNED slots.`)
     console.log('\n--- State 2: Applying Idea 2 (1-Degree Swap Repair) ---')
-    repairAssignments(teachers, assignedExaminations, unavailableArrays, originalExaminations)
+    repairAssignments(teachers, assignedExaminations, unavailableArrays, originalExaminations, globalOptions)
   }
 
   return assignedExaminations
