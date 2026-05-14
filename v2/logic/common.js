@@ -1,8 +1,4 @@
 const { DateTime, Interval } = require('luxon')
-const {
-  F1_F5_EXAM_PERIOD,
-  F6_EXAM_PERIOD
-} = require('../constants')
 const { getExamInterval, getIntervalBySlot } = require('../utils')
 
 /**
@@ -60,36 +56,6 @@ function getTeacherAssignedExamsOnSameDay(teacherId, exam, assignedExaminations)
 }
 
 /**
- * counts the number of lessons a teacher has in the relevant exam period (F1-F5 or F6).
- * Used for workload balancing.
- */
-function getPeriodLessonCount(teacherId, exam, unavailableArrays) {
-  const examInterval = getExamInterval(exam)
-  const f1f5Int = Interval.fromISO(F1_F5_EXAM_PERIOD)
-  const f6Int = Interval.fromISO(F6_EXAM_PERIOD)
-  
-  let targetPeriod = null
-  if (examInterval.overlaps(f1f5Int)) targetPeriod = f1f5Int
-  else if (examInterval.overlaps(f6Int)) targetPeriod = f6Int
-  
-  if (!targetPeriod) return 0
-  
-  const unavailables = unavailableArrays.filter(u => 
-    u.teachers.includes(teacherId) && /D\dP\d/.test(u.remark)
-  )
-  
-  let count = 0
-  for (const u of unavailables) {
-    for (const slot of u.slots) {
-      if (targetPeriod.overlaps(getIntervalBySlot(slot))) {
-        count++
-      }
-    }
-  }
-  return count
-}
-
-/**
  * Counts lessons on the specific exam day.
  */
 function getDayLessonsCount(teacherId, exam, unavailableArrays) {
@@ -114,6 +80,5 @@ module.exports = {
   checkOverlapWithUnavailable,
   isTeacherAssignedTimeConflict,
   getTeacherAssignedExamsOnSameDay,
-  getPeriodLessonCount,
   getDayLessonsCount
 }
