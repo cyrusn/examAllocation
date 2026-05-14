@@ -263,6 +263,7 @@ function rebuildTeacherStats(teachers, assignedExaminations) {
     t.guidanceDuty = 0
     t.senDuty = 0
     t.occurrence = 0
+    t.blockedByLessons = 0
   })
   
   assignedExaminations.forEach(exam => {

@@ -153,6 +153,7 @@ function getOrderedAvailableTeachers(
     // Daily Lesson Hard Limit (CLI configured)
     const lessonsOnDay = getDayLessonsCount(t.teacher, exam, unavailableArrays)
     if (dailyLessonLimit !== undefined && lessonsOnDay >= dailyLessonLimit) {
+      t.blockedByLessons = (t.blockedByLessons || 0) + 1
       return false
     }
 
@@ -163,7 +164,10 @@ function getOrderedAvailableTeachers(
        const assignedOnDay = getTeacherAssignedExamsOnSameDay(t.teacher, exam, assignedExaminations)
        if (assignedOnDay.length > 2) return false // Limit: >2 exams/day
 
-       if (dailyLessonLimit === undefined && lessonsOnDay >= 4) return false // Default soft limit: >= 4 lessons/day
+       if (dailyLessonLimit === undefined && lessonsOnDay >= 4) {
+         t.blockedByLessons = (t.blockedByLessons || 0) + 1
+         return false // Default soft limit: >= 4 lessons/day
+       }
     }
 
     return true
@@ -252,13 +256,13 @@ function getOrderedAvailableTeachers(
        if (teacherIndex !== -1) {
          currentTeachers[teacherIndex] = assignExamToTeacher(currentTeachers[teacherIndex], exam)
        } else {
-         const newT = assignExamToTeacher({ teacher: invigilator, exams: [], totalInvigilationTime: 0, fiDuty: 0, sbDuty: 0, guidanceDuty: 0, occurrence: 0 }, exam)
+         const newT = assignExamToTeacher({ teacher: invigilator, exams: [], totalInvigilationTime: 0, fiDuty: 0, sbDuty: 0, guidanceDuty: 0, occurrence: 0, blockedByLessons: 0 }, exam)
          currentTeachers.push(newT)
        }
     })
   })
   return currentTeachers
-  }
+}
 
 module.exports = {
   assignExamToTeacher,

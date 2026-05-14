@@ -74,7 +74,8 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
       guidanceDuty,
       senDuty,
       isSkip,
-      periodLessons
+      periodLessons,
+      blockedByLessons
     } = t
     if (idx == 0) {
       prev.push([
@@ -83,6 +84,7 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
         'assignedPeriods',
         'Balance (Net)',
         'Period Lessons',
+        'Blocked by Lessons',
         'totalInvigilationTime',
         'occurrence',
         'fiDuty',
@@ -99,6 +101,7 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
       assignedPeriods,
       originalSubstitutionNumber + assignedPeriods,
       periodLessons,
+      blockedByLessons || 0,
       totalInvigilationTime,
       occurrence,
       fiDuty || 0,
@@ -114,8 +117,8 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
   const header = rows[0]
   const data = rows.slice(1)
   
-  // Sort data by 'totalInvigilationTime' (index 5) descending
-  const sortedData = _.orderBy(data, [5], ['desc'])
+  // Sort data by 'totalInvigilationTime' (index 6) descending
+  const sortedData = _.orderBy(data, [6], ['desc'])
   
   // Recombine header and sorted data
   const finalRows = [header, ...sortedData]

@@ -17,6 +17,7 @@ function parseTeachers(rawTeachers) {
       sbDuty: 0,
       guidanceDuty: 0,
       occurrence: 0,
+      blockedByLessons: 0,
       exams: [],// Track assigned exams
     }
   })
