@@ -60,8 +60,10 @@ function getTeacherAssignedExamsOnSameDay(teacherId, exam, assignedExaminations)
  */
 function getDayLessonsCount(teacherId, exam, unavailableArrays) {
   const examStartTime = DateTime.fromISO(exam.startDateTime)
+  const cleanTeacherId = (teacherId || '').trim()
+
   const teacherUnavailables = unavailableArrays.filter(u => 
-    u.teachers.includes(teacherId) && /D\dP\d/.test(u.remark)
+    u.teachers.some(initial => initial.trim() === cleanTeacherId) && /[Dd]\s*\d+\s*[Pp]\s*\d+/.test(u.remark || '')
   )
 
   let count = 0

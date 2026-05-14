@@ -5,7 +5,9 @@ const { F1_F5_EXAM_PERIOD, F6_EXAM_PERIOD } = require('../constants')
 const { Interval, DateTime } = require('luxon')
 const { getIntervalBySlot } = require('../utils')
 
-async function printStat(assignedExaminations, unavailableArrays = []) {
+const { getDayLessonsCount } = require('../logic/common')
+
+async function printStat(assignedExaminations, unavailableArrays = [], options = {}) {
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
   await batchClearData(SPREADSHEET_ID, 'stat!A:Z')
   await clearSheetFormatting(SPREADSHEET_ID, 'stat')
@@ -19,6 +21,8 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
     const examDate = DateTime.fromISO(exam.startDateTime).toFormat('yyyy-MM-dd')
     activeExamDates.add(examDate)
   })
+
+  const limit = options.dailyLessonLimit !== undefined ? options.dailyLessonLimit : 4
 
   // Initial mapping
   let teachers = rawTeachers.map((t) => {
@@ -46,6 +50,15 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
       })
     })
 
+    // Calculate how many times this teacher was blocked from an exam assignment
+    let blockedByLessons = 0
+    assignedExaminations.forEach(exam => {
+      const lessonsOnDay = getDayLessonsCount(teacherId, exam, unavailableArrays)
+      if (lessonsOnDay >= limit) {
+        blockedByLessons++
+      }
+    })
+
     return {
       ...t,
       teacher: teacherId,
@@ -55,7 +68,8 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
       sbDuty: 0,
       guidanceDuty: 0,
       occurrence: 0,
-      periodLessons
+      periodLessons,
+      blockedByLessons
     }
   })
 

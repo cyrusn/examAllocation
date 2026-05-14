@@ -153,7 +153,6 @@ function getOrderedAvailableTeachers(
     // Daily Lesson Hard Limit (CLI configured)
     const lessonsOnDay = getDayLessonsCount(t.teacher, exam, unavailableArrays)
     if (dailyLessonLimit !== undefined && lessonsOnDay >= dailyLessonLimit) {
-      t.blockedByLessons = (t.blockedByLessons || 0) + 1
       return false
     }
 
@@ -165,7 +164,6 @@ function getOrderedAvailableTeachers(
        if (assignedOnDay.length > 2) return false // Limit: >2 exams/day
 
        if (dailyLessonLimit === undefined && lessonsOnDay >= 4) {
-         t.blockedByLessons = (t.blockedByLessons || 0) + 1
          return false // Default soft limit: >= 4 lessons/day
        }
     }
