@@ -2,7 +2,7 @@ const _ = require('lodash')
 const { calculateTeacherStats } = require('../logic')
 const { getSheetData, appendRows, batchClearData, clearSheetFormatting, autoResizeRows, setWrapText } = require('../googleSheet')
 const { F1_F5_EXAM_PERIOD, F6_EXAM_PERIOD } = require('../constants')
-const { Interval } = require('luxon')
+const { Interval, DateTime } = require('luxon')
 const { getIntervalBySlot } = require('../utils')
 
 async function printStat(assignedExaminations, unavailableArrays = []) {
