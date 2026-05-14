@@ -159,8 +159,11 @@ function getOrderedAvailableTeachers(
        const lessonCount = getPeriodLessonCount(t.teacher, exam, unavailableArrays)
        const effectiveSubNumber = t.ignoreSubstitutionNumber ? 0 : (t.originalSubstitutionNumber || 0)
        const subTime = effectiveSubNumber * 55
-       let score = (t.totalInvigilationTime + subTime + lessonCount * 55) / 120
-       
+       // Add a significant weight for each general duty (e.g., equivalent to 60 minutes of invigilation)
+       // This penalizes teachers who have done standbys/guidance, pushing standard exams to those with 0 general duties.
+       const generalDutyPenalty = (t.generalDuty || 0) * 60
+       let score = (t.totalInvigilationTime + subTime + generalDutyPenalty + lessonCount * 55) / 120
+
        if (preferedTeachers && preferedTeachers.includes(t.teacher)) {
          score = Math.round(score * PREFERED_RATE)
        } else {
@@ -168,7 +171,6 @@ function getOrderedAvailableTeachers(
        }
        return score
   }
-
   // Sorting Priorities
   
   // Return the index in preferedTeachers to maintain user's requested order (PIC first)
