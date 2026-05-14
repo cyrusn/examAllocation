@@ -294,9 +294,9 @@ function initializeAssignments(teachers, assignedExaminations) {
 /**
  * Helper: Finds candidates using strict rules, then falls back to relaxed.
  */
-function findCandidatesWithRetry(teachers, unavailableArrays, assignedExaminations, exam, bindedExams) {
+function findCandidatesWithRetry(teachers, unavailableArrays, assignedExaminations, exam, bindedExams, globalOptions = {}) {
     let candidateTeachers = findCommonCandidates(
-      teachers, unavailableArrays, assignedExaminations, exam, bindedExams, { strict: true }
+      teachers, unavailableArrays, assignedExaminations, exam, bindedExams, { ...globalOptions, strict: true }
     )
 
     // Retry with relaxed constraints if needed
