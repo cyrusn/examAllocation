@@ -74,8 +74,8 @@ async function printStat(assignedExaminations) {
   const header = rows[0]
   const data = rows.slice(1)
   
-  // Sort data by 'Balance (Net)' (index 3) descending
-  const sortedData = _.orderBy(data, [3], ['desc'])
+  // Sort data by 'totalInvigilationTime' (index 4) descending
+  const sortedData = _.orderBy(data, [4], ['desc'])
   
   // Recombine header and sorted data
   const finalRows = [header, ...sortedData]
