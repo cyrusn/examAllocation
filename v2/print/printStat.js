@@ -98,8 +98,8 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
   const header = rows[0]
   const data = rows.slice(1)
   
-  // Sort data by 'totalInvigilationTime' (index 4) descending
-  const sortedData = _.orderBy(data, [4], ['desc'])
+  // Sort data by 'totalInvigilationTime' (index 5) descending
+  const sortedData = _.orderBy(data, [5], ['desc'])
   
   // Recombine header and sorted data
   const finalRows = [header, ...sortedData]
