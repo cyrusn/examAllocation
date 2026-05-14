@@ -175,7 +175,6 @@ function getOrderedAvailableTeachers(
        const subTime = effectiveSubNumber * 55
 
        // Smarter Penalty: Only apply duty penalty if the teacher has already cleared their debt.
-       // This allows teachers with negative credits (like MCW) to take duties without being blocked from regular exams.
        const currentLoad = t.totalInvigilationTime + subTime
        const totalSpecialDuties = (t.fiDuty || 0) + (t.sbDuty || 0) + (t.guidanceDuty || 0)
        const dutyPenalty = currentLoad > 0 ? totalSpecialDuties * 60 : 0
@@ -231,6 +230,7 @@ function getOrderedAvailableTeachers(
     )
   }
 
+  // Ensure score (sortFunction) is the primary driver for normal exams, not occurrence
   return _.orderBy(candidates, [
     isPreferred,
     sortFunction,
