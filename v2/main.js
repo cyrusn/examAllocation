@@ -82,7 +82,7 @@ const main = async () => {
     ignoredSlots,
     rawTeachers
   ] = await Promise.all([
-    getSheetData(SPREADSHEET_ID, 'exam!A:O'),
+    getSheetData(SPREADSHEET_ID, 'exam!A:P'),
     getSheetData(SPREADSHEET_ID, 'unavailables!A:C'),
     getSheetData(SPREADSHEET_ID, 'ignoredUnavailables!A:D'),
     getSheetData(SPREADSHEET_ID, 'teachers!A:E')
