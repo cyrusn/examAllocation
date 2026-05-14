@@ -13,8 +13,9 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
 
   const rawTeachers = await getSheetData(SPREADSHEET_ID, 'teachers!A:E')
   
-  // Define full exam range
-  const fullPeriod = Interval.fromISO(F1_F5_EXAM_PERIOD).union(Interval.fromISO(F6_EXAM_PERIOD))
+  // Define full exam ranges
+  const f1f5Period = Interval.fromISO(F1_F5_EXAM_PERIOD)
+  const f6Period = Interval.fromISO(F6_EXAM_PERIOD)
 
   // Initial mapping
   let teachers = rawTeachers.map((t) => {
@@ -25,7 +26,8 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
     let periodLessons = 0
     teacherLessons.forEach(u => {
       u.slots.forEach(slot => {
-        if (fullPeriod.overlaps(getIntervalBySlot(slot))) {
+        const slotInterval = getIntervalBySlot(slot)
+        if (f1f5Period.overlaps(slotInterval) || f6Period.overlaps(slotInterval)) {
           periodLessons++
         }
       })
