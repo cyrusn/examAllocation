@@ -70,7 +70,17 @@ async function printStat(assignedExaminations) {
     return prev
   }, [])
 
-  await appendRows(SPREADSHEET_ID, 'stat!A:A', _.orderBy(rows, [3], ['desc']))
+  // Separate header from data to prevent sorting the header row
+  const header = rows[0]
+  const data = rows.slice(1)
+  
+  // Sort data by 'Balance (Net)' (index 3) descending
+  const sortedData = _.orderBy(data, [3], ['desc'])
+  
+  // Recombine header and sorted data
+  const finalRows = [header, ...sortedData]
+
+  await appendRows(SPREADSHEET_ID, 'stat!A:A', finalRows)
   await autoResizeRows(SPREADSHEET_ID, 'stat')
 }
 
