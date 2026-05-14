@@ -302,15 +302,9 @@ function findCandidatesWithRetry(teachers, unavailableArrays, assignedExaminatio
     // Retry with relaxed constraints if needed
     const needed = exam.requiredInvigilators - exam.invigilators.length
     if (candidateTeachers.length < needed) {
-      const relaxedCandidates = findCommonCandidates(
-        teachers, unavailableArrays, assignedExaminations, exam, bindedExams, { strict: false }
+      candidateTeachers = findCommonCandidates(
+        teachers, unavailableArrays, assignedExaminations, exam, bindedExams, { ...globalOptions, strict: false }
       )
-      
-      // If relaxed gave us more, use them (or a mix? Logic usually takes relaxed set as valid fallback)
-      // Usually relaxed set implies strictly valid ones are included or we take union?
-      // getOrderedAvailableTeachers returns *all* valid under the constraints.
-      // Strict subset is inside Relaxed set. So we just take relaxed.
-      candidateTeachers = relaxedCandidates
     }
     return candidateTeachers
 }

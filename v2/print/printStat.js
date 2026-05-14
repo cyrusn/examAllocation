@@ -50,11 +50,27 @@ async function printStat(assignedExaminations, unavailableArrays = [], options =
       })
     })
 
-    // Calculate how many times this teacher was blocked from an exam assignment
+    // Calculate how many times this teacher was blocked from an exam assignment (by DATE)
     let blockedByLessons = 0
-    assignedExaminations.forEach(exam => {
-      const lessonsOnDay = getDayLessonsCount(teacherId, exam, unavailableArrays)
-      if (lessonsOnDay >= limit) {
+    activeExamDates.forEach(dateStr => {
+      let lessonsOnDay = 0
+      teacherLessons.forEach(u => {
+        u.slots.forEach(slot => {
+          const slotStart = DateTime.fromISO(slot.start)
+          if (slotStart.isValid && slotStart.toFormat('yyyy-MM-dd') === dateStr) {
+            lessonsOnDay++
+          }
+        })
+      })
+      
+      // Check against the lowest dailyLessonLimit of all exams occurring on that specific date
+      const examsOnDate = assignedExaminations.filter(e => e.startDateTime.startsWith(dateStr))
+      let limitForDay = 4 // Default fallback
+      if (examsOnDate.length > 0) {
+        limitForDay = Math.min(...examsOnDate.map(e => parseInt(e.dailyLessonLimit) || 4))
+      }
+
+      if (lessonsOnDay >= limitForDay) {
         blockedByLessons++
       }
     })

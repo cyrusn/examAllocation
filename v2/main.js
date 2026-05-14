@@ -24,7 +24,6 @@ const parseArgs = () => {
   const args = process.argv.slice(2)
   const options = {
     sbDuration: 180,
-    dailyLessonLimit: undefined,
     help: false
   }
 
@@ -33,12 +32,6 @@ const parseArgs = () => {
       const val = parseInt(args[i + 1])
       if (!isNaN(val)) {
         options.sbDuration = val
-        i++
-      }
-    } else if (args[i] === '--daily-lesson-limit' || args[i] === '-l') {
-      const val = parseInt(args[i + 1])
-      if (!isNaN(val)) {
-        options.dailyLessonLimit = val
         i++
       }
     } else if (args[i] === '--help' || args[i] === '-h') {
@@ -59,13 +52,10 @@ Usage: node v2/main.js [options]
 
 Options:
   --sb-duration, -s <minutes>         Adjust the duration of Standby/Guidance/Morning duties (default: 180)
-  --daily-lesson-limit, -l <count>    Do not assign exams to teachers who have this many (or more) lessons on the same day.
   --help, -h                          Show this help message
 
 Examples:
   node v2/main.js --sb-duration 120
-  node v2/main.js -l 2
-  node v2/main.js -s 150 -l 3
   `)
 }
 
@@ -80,9 +70,6 @@ const main = async () => {
   console.log('Allocating Examinations (v2)...')
   if (options.sbDuration !== 180) {
     console.log(`Custom SB Duration: ${options.sbDuration} minutes`)
-  }
-  if (options.dailyLessonLimit !== undefined) {
-    console.log(`Daily Lesson Limit: Exclude teachers with >= ${options.dailyLessonLimit} lessons/day`)
   }
   console.time('Time to finish')
   

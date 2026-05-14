@@ -131,10 +131,10 @@ function getOrderedAvailableTeachers(
   exam,
   options = { strict: true }
 ) {
-  const { classlevel, classcode, preferedTeachers } = exam
+  const { classlevel, classcode, preferedTeachers, dailyLessonLimit = 4 } = exam
   const examInterval = getExamInterval(exam)
   const isSen = /\d{1}S(R|T)?/.test(classcode)
-  const { strict, dailyLessonLimit } = options
+  const { strict } = options
 
   const candidates = teachers.filter(t => {
     // 1. Hard Constraints (Physical Impossibilities)
@@ -150,9 +150,9 @@ function getOrderedAvailableTeachers(
     const isTaOrDc = [...TEACHER_ASSISTANTS, ...DC_TEAM_MEMBERS].includes(t.teacher)
     if (GENERAL_DUTIES.includes(classlevel) && isTaOrDc) return false
 
-    // Daily Lesson Hard Limit (CLI configured)
+    // Daily Lesson Hard Limit (Row configured, defaults to 4)
     const lessonsOnDay = getDayLessonsCount(t.teacher, exam, unavailableArrays)
-    if (dailyLessonLimit !== undefined && lessonsOnDay >= dailyLessonLimit) {
+    if (lessonsOnDay >= dailyLessonLimit) {
       return false
     }
 
@@ -162,10 +162,6 @@ function getOrderedAvailableTeachers(
        
        const assignedOnDay = getTeacherAssignedExamsOnSameDay(t.teacher, exam, assignedExaminations)
        if (assignedOnDay.length > 2) return false // Limit: >2 exams/day
-
-       if (dailyLessonLimit === undefined && lessonsOnDay >= 4) {
-         return false // Default soft limit: >= 4 lessons/day
-       }
     }
 
     return true

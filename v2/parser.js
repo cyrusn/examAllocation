@@ -175,6 +175,12 @@ function parseExaminations(rawExaminations, options = {}) {
             assignedPreferedTeachers = preferedTeachers[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
           }
 
+          // Parse Daily Lesson Limit from row (default to 4 if missing or invalid)
+          let dailyLessonLimit = parseInt(exam.dailyLessonLimit)
+          if (isNaN(dailyLessonLimit)) {
+            dailyLessonLimit = 4
+          }
+
           prev.push({
             binding: bindingIds,
             id: currentId,
@@ -193,7 +199,8 @@ function parseExaminations(rawExaminations, options = {}) {
             paperInCharges: assignedPaperInCharges,
             location,
             invigilators: preAssignedInvigilators,
-            preferedTeachers: assignedPreferedTeachers
+            preferedTeachers: assignedPreferedTeachers,
+            dailyLessonLimit
           })
         })
       })
