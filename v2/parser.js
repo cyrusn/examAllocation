@@ -40,7 +40,8 @@ function parseUnavailables(rawUnavailables) {
 /**
  * Transforms raw examination data, handling bindings, splitting classes, and applying rules.
  */
-function parseExaminations(rawExaminations) {
+function parseExaminations(rawExaminations, options = {}) {
+  const { sbDuration = 180 } = options
   return _(rawExaminations)
     .filter(({ skip, id }) => !skip && id)
     .orderBy([(a) => (a.binding && a.binding.length > 0) ? 1 : 0], ['asc'])
@@ -61,7 +62,7 @@ function parseExaminations(rawExaminations) {
       const isDurationNA = isNaN(duration)
       
       if (isDurationNA || isStandby || isGuidance || isMorning) {
-        duration = 180
+        duration = sbDuration
       }
 
       let finalSession = (session !== undefined && session !== null && session !== '') ? parseInt(session) : undefined

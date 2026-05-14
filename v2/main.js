@@ -17,8 +17,61 @@ const { allocateExaminations } = require('./allocator')
 const { parseTeachers, parseUnavailables, parseExaminations } = require('./parser')
 const { OUTPUT_FILE_PATH } = require('./constants')
 
+/**
+ * Parses command-line arguments.
+ */
+const parseArgs = () => {
+  const args = process.argv.slice(2)
+  const options = {
+    sbDuration: 180,
+    help: false
+  }
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--sb-duration' || args[i] === '-s') {
+      const val = parseInt(args[i + 1])
+      if (!isNaN(val)) {
+        options.sbDuration = val
+        i++
+      }
+    } else if (args[i] === '--help' || args[i] === '-h') {
+      options.help = true
+    }
+  }
+  return options
+}
+
+/**
+ * Displays help information.
+ */
+const showHelp = () => {
+  console.log(`
+Examination Allocation CLI Help
+-------------------------------
+Usage: node v2/main.js [options]
+
+Options:
+  --sb-duration, -s <minutes>   Adjust the duration of Standby/Guidance/Morning duties (default: 180)
+  --help, -h                    Show this help message
+
+Examples:
+  node v2/main.js --sb-duration 120
+  node v2/main.js -s 150
+  `)
+}
+
 const main = async () => {
+  const options = parseArgs()
+
+  if (options.help) {
+    showHelp()
+    return
+  }
+
   console.log('Allocating Examinations (v2)...')
+  if (options.sbDuration !== 180) {
+    console.log(`Custom SB Duration: ${options.sbDuration} minutes`)
+  }
   console.time('Time to finish')
   
   const SPREADSHEET_ID = process.env['SPREADSHEET_ID']
@@ -39,7 +92,7 @@ const main = async () => {
   // 2. Prepare Data
   let teachers = parseTeachers(rawTeachers)
   const unavailableArrays = parseUnavailables(rawUnavailables)
-  const examinations = parseExaminations(rawExaminations)
+  const examinations = parseExaminations(rawExaminations, options)
 
   // 3. Initialize Assignments & Sanitize Pre-assignments
   let assignedExaminations = sanitizeCollisions(examinations)

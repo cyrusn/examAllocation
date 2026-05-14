@@ -177,7 +177,7 @@ async function printView(assignedExaminations, teachers = []) {
                   ])
                   .map(
                     ({ classcode, invigilators }) =>
-                      `${classcode}\n${formatInvigilators(invigilators, true)}`
+                      `${classcode}\n${formatInvigilators(invigilators, secondKey !== 'FI')}`
                   )
                   .value() || [])
               ])
@@ -187,7 +187,7 @@ async function printView(assignedExaminations, teachers = []) {
             const formattedDuration = `${duration} (${getSenDuration(examSession)})`
 
             let hallString = ''
-            const hall = classcodes.find(({ location, classcode, title }) => {
+            const hall = classcodes.find(({ location, classcode }) => {
               const hallGroup = [
                 'HALL',
                 '1/F',
@@ -197,13 +197,13 @@ async function printView(assignedExaminations, teachers = []) {
                 '5/F',
                 'IS LAB'
               ]
-              const titleUpper = (title || '').toUpperCase()
               const isGroupedClass = /^\d\s*[A-Za-z]\s*-\s*[A-Za-z]$/.test(classcode)
-              const isPractical = titleUpper.includes('IS PRACTICAL') || titleUpper.includes('CHI IV')
+              const locStr = (location || '').toUpperCase().trim()
+              const isCompoundLocation = /[-+]/.test(locStr)
               
               // It is considered the "hall" (first column) if it's an explicitly grouped class string,
-              // it's in a known hall location, or it is a practical/oral exam that uses grouped locations.
-              return isGroupedClass || hallGroup.includes((location || '').toUpperCase().trim()) || isPractical
+              // it's in a known hall location, or the location string contains '-' or '+' (e.g. 201-205, 301+302).
+              return isGroupedClass || hallGroup.includes(locStr) || isCompoundLocation
             })
 
             if (hall) {
@@ -283,6 +283,15 @@ async function printView(assignedExaminations, teachers = []) {
   await appendRows(SPREADSHEET_ID, 'result!A:A', excelPrintView)
   await autoResizeRows(SPREADSHEET_ID, 'result')
   await formatRowsGray(SPREADSHEET_ID, 'result', grayRowIndices)
+
+  console.log('Printing Exam View (BW)')
+  await batchClearData(SPREADSHEET_ID, 'result_bw!A:Z')
+  await clearSheetFormatting(SPREADSHEET_ID, 'result_bw')
+  await setWrapText(SPREADSHEET_ID, 'result_bw')
+  await formatHeaderRow(SPREADSHEET_ID, 'result_bw')
+  await appendRows(SPREADSHEET_ID, 'result_bw!A:A', excelPrintView)
+  await autoResizeRows(SPREADSHEET_ID, 'result_bw')
+  await formatRowsGray(SPREADSHEET_ID, 'result_bw', grayRowIndices)
 }
 
 module.exports = { printView }

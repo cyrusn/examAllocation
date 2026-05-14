@@ -136,6 +136,14 @@ function repairAssignments(teachers, assignedExaminations, unavailableArrays, or
     // 2. Find overlapping exams
     const overlappingExams = assignedExaminations.filter(e => {
       if (e1Group.some(g => g.id === e.id)) return false
+      
+      // Exclude exams in the same binding group to prevent cannibalizing bound exams
+      const isBound =
+        (examWithGap.binding && examWithGap.binding.includes(e.id)) ||
+        (e.binding && e.binding.includes(examWithGap.id)) ||
+        (examWithGap.binding && e.binding && _.intersection(examWithGap.binding, e.binding).length > 0)
+      if (isBound) return false
+
       return getExamInterval(e).overlaps(e1Interval)
     })
 
@@ -162,6 +170,9 @@ function repairAssignments(teachers, assignedExaminations, unavailableArrays, or
         const preAssignedTeachers = origE2 ? origE2.invigilators : []
         if (preAssignedTeachers.includes(tBusyId)) continue
 
+        // Prevent swapping in a teacher already assigned to this gap exam (prevents duplicates)
+        if (examWithGap.invigilators.includes(tBusyId)) continue
+
         // Create a hypothetical state without E2 group
         const assignedWithoutE2Group = assignedExaminations.filter(e => !e2Group.some(g => g.id === e.id))
         
@@ -172,8 +183,12 @@ function repairAssignments(teachers, assignedExaminations, unavailableArrays, or
         // 3. Find a replacement for E2
         const e2Cands = findCommonCandidates(teachers, unavailableArrays, assignedWithoutE2Group, E2, e2Binds, { strict: false })
         
-        // Replacement must not be the busy teacher, nor someone already assigned to E1
-        const tFreeObj = e2Cands.find(t => t.teacher !== tBusyId && !examWithGap.invigilators.includes(t.teacher))
+        // Replacement must not be the busy teacher, someone already assigned to E1, nor someone already assigned to E2
+        const tFreeObj = e2Cands.find(t => 
+          t.teacher !== tBusyId && 
+          !examWithGap.invigilators.includes(t.teacher) &&
+          !E2.invigilators.includes(t.teacher)
+        )
         
         if (tFreeObj) {
           const tFreeId = tFreeObj.teacher
