@@ -19,17 +19,26 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
 
   // Initial mapping
   let teachers = rawTeachers.map((t) => {
+    const teacherId = (t.teacher || '').trim()
+    
     // Calculate total lessons in the entire exam period
-    const teacherLessons = unavailableArrays.filter(u => 
-      u.teachers.includes(t.teacher) && /D\dP\d/.test(u.remark)
-    )
+    const teacherLessons = unavailableArrays.filter(u => {
+      const matchTeacher = u.teachers.some(initial => initial.trim() === teacherId)
+      const isLesson = /[Dd]\s*\d+\s*[Pp]\s*\d+/.test(u.remark || '')
+      return matchTeacher && isLesson
+    })
+
     let periodLessons = 0
     teacherLessons.forEach(u => {
       u.slots.forEach(slot => {
-        // Reconstruct the slot string because getIntervalBySlot expects "start/end"
-        const slotString = `${slot.start}/${slot.end}`
-        const slotInterval = getIntervalBySlot(slotString)
-        if (f1f5Period.overlaps(slotInterval) || f6Period.overlaps(slotInterval)) {
+        const slotStart = DateTime.fromISO(slot.start)
+        if (!slotStart.isValid) return
+
+        // Check if the lesson date falls within either exam period
+        const isF1F5 = slotStart >= f1f5Period.start && slotStart <= f1f5Period.end
+        const isF6 = slotStart >= f6Period.start && slotStart <= f6Period.end
+        
+        if (isF1F5 || isF6) {
           periodLessons++
         }
       })
@@ -37,6 +46,7 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
 
     return {
       ...t,
+      teacher: teacherId,
       originalSubstitutionNumber: parseInt(t.substitutionNumber) || 0,
       totalInvigilationTime: 0,
       fiDuty: 0,
