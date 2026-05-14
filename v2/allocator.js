@@ -23,7 +23,7 @@ function applyReordering(examinations) {
   // 1. Followers (bound exams) last
   // 2. Date (Ascending) - Process day by day
   // 3. Date Density (Descending) - Handle heaviest days first
-  // 4. Normal Exams First (FI/SB/G last) 
+  // 4. Exam Type Priority: FI (0) > Normal/SEN (1) > Guidance/Morning (2) > Standby (3)
   // 5. Duration (Descending) - Longest exams first
   // 6. Bindings Count (Descending) - Exams that pull followers
   // 7. Time (Ascending)
@@ -31,7 +31,12 @@ function applyReordering(examinations) {
     e => e.binding && e.binding.length > 0 ? 1 : 0, 
     e => e.startDateTime.substring(0, 10),
     e => dateDensities[e.startDateTime.substring(0, 10)] || 0, 
-    e => (e.isFI || e.isStandby || e.isGuidance || e.isMorning || ['FI', 'SB', 'G'].includes(e.classlevel)) ? 1 : 0,
+    e => {
+      if (e.isFI || e.classlevel === 'FI') return 0
+      if (e.isGuidance || e.isMorning || e.classlevel === 'G') return 2
+      if (e.isStandby || e.classlevel === 'SB') return 3
+      return 1 // Normal/SEN exams
+    },
     e => e.duration, 
     e => examinations.filter(f => f.binding && f.binding.includes(e.id)).length, 
     e => e.startDateTime 
@@ -97,13 +102,18 @@ function allocateExaminations(originalExaminations, originalTeachers, unavailabl
   // State 0 Sorting:
   // 1. Followers (bound exams) last
   // 2. Date (Ascending) - Process day by day
-  // 3. Normal Exams First (FI/SB/G last) so normal exams get access to deepest negative credits
+  // 3. Exam Type Priority: FI (0) > Normal/SEN (1) > Guidance/Morning (2) > Standby (3)
   // 4. Duration (Descending) - Longest exams first on that day
   // 5. Time (Ascending) - Morning to afternoon
   examinations = _.orderBy(examinations, [
     e => e.binding && e.binding.length > 0 ? 1 : 0, 
     e => e.startDateTime.substring(0, 10), 
-    e => (e.isFI || e.isStandby || e.isGuidance || e.isMorning || ['FI', 'SB', 'G'].includes(e.classlevel)) ? 1 : 0,
+    e => {
+      if (e.isFI || e.classlevel === 'FI') return 0
+      if (e.isGuidance || e.isMorning || e.classlevel === 'G') return 2
+      if (e.isStandby || e.classlevel === 'SB') return 3
+      return 1 // Normal/SEN exams
+    },
     e => e.duration, 
     e => e.startDateTime 
   ], ['asc', 'asc', 'asc', 'desc', 'asc'])
