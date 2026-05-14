@@ -19,15 +19,23 @@ function applyReordering(examinations) {
     }
   })
 
+  // State 1 Sorting (Reordering based on density):
+  // 1. Followers (bound exams) last
+  // 2. Date (Ascending) - Process day by day
+  // 3. Date Density (Descending) - Handle heaviest days first
+  // 4. Normal Exams First (FI/SB/G last) 
+  // 5. Duration (Descending) - Longest exams first
+  // 6. Bindings Count (Descending) - Exams that pull followers
+  // 7. Time (Ascending)
   return _.orderBy(examinations, [
-    e => e.binding && e.binding.length > 0 ? 1 : 0, // Followers last
-    e => e.duration, // Duration (Desc) - Prioritized to match user requirement
-    e => dateDensities[e.startDateTime.substring(0, 10)] || 0, // Date Density (Desc)
-    e => examinations.filter(f => f.binding && f.binding.includes(e.id)).length, // Bindings count (Desc)
-    e => e.requiredInvigilators, // Size (Desc)
-    e => e.startDateTime, // Time (Asc)
-    e => e.id // ID (Asc)
-  ], ['asc', 'desc', 'desc', 'desc', 'desc', 'asc', 'asc'])
+    e => e.binding && e.binding.length > 0 ? 1 : 0, 
+    e => e.startDateTime.substring(0, 10),
+    e => dateDensities[e.startDateTime.substring(0, 10)] || 0, 
+    e => (e.isFI || e.isStandby || e.isGuidance || e.isMorning || ['FI', 'SB', 'G'].includes(e.classlevel)) ? 1 : 0,
+    e => e.duration, 
+    e => examinations.filter(f => f.binding && f.binding.includes(e.id)).length, 
+    e => e.startDateTime 
+  ], ['asc', 'asc', 'desc', 'asc', 'desc', 'desc', 'asc'])
 }
 
 function performGreedyAllocation(examinationsList, teachers, unavailableArrays) {
@@ -86,13 +94,19 @@ function allocateExaminations(originalExaminations, originalTeachers, unavailabl
   let examinations = _.cloneDeep(originalExaminations)
   let teachers = _.cloneDeep(originalTeachers)
 
-  // Sort State 0 by Duration (Descending) first to ensure the longest exams
-  // get access to the teachers with the absolute lowest current load.
+  // State 0 Sorting:
+  // 1. Followers (bound exams) last
+  // 2. Date (Ascending) - Process day by day
+  // 3. Normal Exams First (FI/SB/G last) so normal exams get access to deepest negative credits
+  // 4. Duration (Descending) - Longest exams first on that day
+  // 5. Time (Ascending) - Morning to afternoon
   examinations = _.orderBy(examinations, [
-    e => e.binding && e.binding.length > 0 ? 1 : 0, // Followers last
-    e => e.duration, // Duration (Desc)
-    e => e.startDateTime // Time (Asc)
-  ], ['asc', 'desc', 'asc'])
+    e => e.binding && e.binding.length > 0 ? 1 : 0, 
+    e => e.startDateTime.substring(0, 10), 
+    e => (e.isFI || e.isStandby || e.isGuidance || e.isMorning || ['FI', 'SB', 'G'].includes(e.classlevel)) ? 1 : 0,
+    e => e.duration, 
+    e => e.startDateTime 
+  ], ['asc', 'asc', 'asc', 'desc', 'asc'])
 
   let assignedExaminations = performGreedyAllocation(examinations, teachers, unavailableArrays)
   let unassignedCount = countUnassigned(assignedExaminations)  
