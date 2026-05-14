@@ -23,7 +23,8 @@ function calculateExamImpact(exam) {
   const isSen = /\d{1}S(R|T)?/.test(exam.classcode)
   const duration = isSen ? senDuration : exam.duration
 
-  let timeAdded = exam.isDurationNA ? 0 : duration
+  // Use the duration if it's a valid number (even if originally NA, it might have been set to sbDuration in parser)
+  let timeAdded = (isNaN(duration) || duration === undefined) ? 0 : duration
   let fiDuty = 0
   let sbDuty = 0
   let guidanceDuty = 0
