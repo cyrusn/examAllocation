@@ -13,15 +13,18 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
 
   const rawTeachers = await getSheetData(SPREADSHEET_ID, 'teachers!A:E')
   
-  // Define full exam ranges
-  const f1f5Period = Interval.fromISO(F1_F5_EXAM_PERIOD)
-  const f6Period = Interval.fromISO(F6_EXAM_PERIOD)
+  // Calculate the unique dates that actually have exams scheduled
+  const activeExamDates = new Set()
+  assignedExaminations.forEach(exam => {
+    const examDate = DateTime.fromISO(exam.startDateTime).toFormat('yyyy-MM-dd')
+    activeExamDates.add(examDate)
+  })
 
   // Initial mapping
   let teachers = rawTeachers.map((t) => {
     const teacherId = (t.teacher || '').trim()
     
-    // Calculate total lessons in the entire exam period
+    // Calculate total lessons on active exam days
     const teacherLessons = unavailableArrays.filter(u => {
       const matchTeacher = u.teachers.some(initial => initial.trim() === teacherId)
       const isLesson = /[Dd]\s*\d+\s*[Pp]\s*\d+/.test(u.remark || '')
@@ -34,11 +37,10 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
         const slotStart = DateTime.fromISO(slot.start)
         if (!slotStart.isValid) return
 
-        // Check if the lesson date falls within either exam period
-        const isF1F5 = slotStart >= f1f5Period.start && slotStart <= f1f5Period.end
-        const isF6 = slotStart >= f6Period.start && slotStart <= f6Period.end
+        // Check if the lesson date is exactly one of the active exam dates
+        const lessonDate = slotStart.toFormat('yyyy-MM-dd')
         
-        if (isF1F5 || isF6) {
+        if (activeExamDates.has(lessonDate)) {
           periodLessons++
         }
       })
