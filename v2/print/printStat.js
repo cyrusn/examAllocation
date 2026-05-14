@@ -26,7 +26,9 @@ async function printStat(assignedExaminations, unavailableArrays = []) {
     let periodLessons = 0
     teacherLessons.forEach(u => {
       u.slots.forEach(slot => {
-        const slotInterval = getIntervalBySlot(slot)
+        // Reconstruct the slot string because getIntervalBySlot expects "start/end"
+        const slotString = `${slot.start}/${slot.end}`
+        const slotInterval = getIntervalBySlot(slotString)
         if (f1f5Period.overlaps(slotInterval) || f6Period.overlaps(slotInterval)) {
           periodLessons++
         }
