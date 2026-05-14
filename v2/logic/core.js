@@ -61,11 +61,11 @@ function assignExamToTeacher(teacher, exam) {
   const examStart = DateTime.fromISO(startDateTime)
   const examEnd = examStart.plus({ minutes: timeAdded })
 
-  // Check for duplicate assignment (same session/loc/day)
+  // Check for duplicate/overlapping assignment on the SAME DAY
+  // This correctly spans the time for bound exams (like SEN) that happen back-to-back or overlap
   const existingImpact = newTeacher.exams.find(e => 
-    e.session == session &&
-    e.location == location &&
-    e.startDateTime.slice(0, 10) == startDateTime.slice(0, 10)
+    e.startDateTime.slice(0, 10) == startDateTime.slice(0, 10) &&
+    (DateTime.fromISO(e.minStart || e.startDateTime) <= examEnd && DateTime.fromISO(e.maxEnd || DateTime.fromISO(e.startDateTime).plus({ minutes: e.timeAdded }).toISO()) >= examStart)
   )
 
   if (existingImpact) {
