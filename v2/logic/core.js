@@ -33,6 +33,9 @@ function calculateExamImpact(exam) {
   } else if (exam.isGuidance || exam.isMorning) {
     timeAdded = 60
     generalDuty = 1
+  } else if (exam.isFI) {
+    // FI uses actual duration, but adds 2 to generalDuty
+    generalDuty = 2
   } else if (GENERAL_DUTIES.includes(exam.classlevel)) {
     generalDuty = 1
     if (exam.classlevel === 'G' && !exam.isDurationNA) timeAdded = 30
