@@ -15,7 +15,9 @@ async function printStat(assignedExaminations) {
       ...t,
       originalSubstitutionNumber: parseInt(t.substitutionNumber) || 0,
       totalInvigilationTime: 0,
-      generalDuty: 0,
+      fiDuty: 0,
+      sbDuty: 0,
+      guidanceDuty: 0,
       occurrence: 0
     }
   })
@@ -30,7 +32,9 @@ async function printStat(assignedExaminations) {
       originalSubstitutionNumber,
       totalInvigilationTime,
       occurrence,
-      generalDuty,
+      fiDuty,
+      sbDuty,
+      guidanceDuty,
       senDuty,
       isSkip
     } = t
@@ -42,7 +46,9 @@ async function printStat(assignedExaminations) {
         'Balance (Net)',
         'totalInvigilationTime',
         'occurrence',
-        'generalDuty',
+        'fiDuty',
+        'sbDuty',
+        'guidanceDuty',
         'senDuty',
         'isSkip'
       ])
@@ -55,7 +61,9 @@ async function printStat(assignedExaminations) {
       originalSubstitutionNumber + assignedPeriods,
       totalInvigilationTime,
       occurrence,
-      generalDuty || 0,
+      fiDuty || 0,
+      sbDuty || 0,
+      guidanceDuty || 0,
       senDuty || 0,
       isSkip
     ])

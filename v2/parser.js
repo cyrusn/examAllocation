@@ -13,7 +13,9 @@ function parseTeachers(rawTeachers) {
       ignoreSubstitutionNumber: ignoreSub,
       originalSubstitutionNumber: parseInt(t.substitutionNumber) || 0,
       totalInvigilationTime: 0,
-      generalDuty: 0,
+      fiDuty: 0,
+      sbDuty: 0,
+      guidanceDuty: 0,
       occurrence: 0,
       exams: [],// Track assigned exams
     }

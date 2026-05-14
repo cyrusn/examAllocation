@@ -234,7 +234,9 @@ function rebuildTeacherStats(teachers, assignedExaminations) {
   teachers.forEach(t => {
     t.exams = []
     t.totalInvigilationTime = 0
-    t.generalDuty = 0
+    t.fiDuty = 0
+    t.sbDuty = 0
+    t.guidanceDuty = 0
     t.senDuty = 0
     t.occurrence = 0
   })

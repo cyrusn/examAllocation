@@ -24,28 +24,27 @@ function calculateExamImpact(exam) {
   const duration = isSen ? senDuration : exam.duration
 
   let timeAdded = exam.isDurationNA ? 0 : duration
-  let generalDuty = 0
+  let fiDuty = 0
+  let sbDuty = 0
+  let guidanceDuty = 0
   let senDuty = 0
   
-  if (exam.isStandby) {
+  if (exam.isStandby || exam.classlevel === 'SB') {
     timeAdded = 0
-    generalDuty = 1
-  } else if (exam.isGuidance || exam.isMorning) {
+    sbDuty = 1
+  } else if (exam.isGuidance || exam.isMorning || exam.classlevel === 'G') {
     timeAdded = 60
-    generalDuty = 1
-  } else if (exam.isFI) {
-    // FI uses actual duration, but adds 2 to generalDuty
-    generalDuty = 2
-  } else if (GENERAL_DUTIES.includes(exam.classlevel)) {
-    generalDuty = 1
+    guidanceDuty = 1
     if (exam.classlevel === 'G' && !exam.isDurationNA) timeAdded = 30
+  } else if (exam.isFI || exam.classlevel === 'FI') {
+    fiDuty = 1
   }
 
   if (isSen) {
     senDuty = 1
   }
 
-  return { timeAdded, generalDuty, senDuty, session: exam.session, startDateTime: exam.startDateTime, location: exam.location }
+  return { timeAdded, fiDuty, sbDuty, guidanceDuty, senDuty, session: exam.session, startDateTime: exam.startDateTime, location: exam.location }
 }
 
 /**
@@ -54,7 +53,7 @@ function calculateExamImpact(exam) {
  */
 function assignExamToTeacher(teacher, exam) {
   const impact = calculateExamImpact(exam)
-  const { timeAdded, generalDuty, senDuty, session, startDateTime, location } = impact
+  const { timeAdded, fiDuty, sbDuty, guidanceDuty, senDuty, session, startDateTime, location } = impact
   
   const newTeacher = { ...teacher, exams: [...(teacher.exams || [])] }
   
@@ -90,16 +89,26 @@ function assignExamToTeacher(teacher, exam) {
       newTeacher.senDuty = (newTeacher.senDuty || 0) + (senDuty - existingImpact.senDuty)
       existingImpact.senDuty = senDuty
     }
-    if (generalDuty > (existingImpact.generalDuty || 0)) {
-      newTeacher.generalDuty = (newTeacher.generalDuty || 0) + (generalDuty - existingImpact.generalDuty)
-      existingImpact.generalDuty = generalDuty
+    if (fiDuty > (existingImpact.fiDuty || 0)) {
+      newTeacher.fiDuty = (newTeacher.fiDuty || 0) + (fiDuty - existingImpact.fiDuty)
+      existingImpact.fiDuty = fiDuty
+    }
+    if (sbDuty > (existingImpact.sbDuty || 0)) {
+      newTeacher.sbDuty = (newTeacher.sbDuty || 0) + (sbDuty - existingImpact.sbDuty)
+      existingImpact.sbDuty = sbDuty
+    }
+    if (guidanceDuty > (existingImpact.guidanceDuty || 0)) {
+      newTeacher.guidanceDuty = (newTeacher.guidanceDuty || 0) + (guidanceDuty - existingImpact.guidanceDuty)
+      existingImpact.guidanceDuty = guidanceDuty
     }
     return newTeacher
   }
 
   newTeacher.occurrence = (newTeacher.occurrence || 0) + 1
   newTeacher.totalInvigilationTime = (newTeacher.totalInvigilationTime || 0) + timeAdded
-  newTeacher.generalDuty = (newTeacher.generalDuty || 0) + generalDuty
+  newTeacher.fiDuty = (newTeacher.fiDuty || 0) + fiDuty
+  newTeacher.sbDuty = (newTeacher.sbDuty || 0) + sbDuty
+  newTeacher.guidanceDuty = (newTeacher.guidanceDuty || 0) + guidanceDuty
   newTeacher.senDuty = (newTeacher.senDuty || 0) + senDuty
   
   newTeacher.exams.push({
@@ -159,13 +168,14 @@ function getOrderedAvailableTeachers(
        const lessonCount = getPeriodLessonCount(t.teacher, exam, unavailableArrays)
        const effectiveSubNumber = t.ignoreSubstitutionNumber ? 0 : (t.originalSubstitutionNumber || 0)
        const subTime = effectiveSubNumber * 55
-       
-       // Smarter Penalty: Only apply generalDuty penalty if the teacher has already cleared their debt.
+
+       // Smarter Penalty: Only apply duty penalty if the teacher has already cleared their debt.
        // This allows teachers with negative credits (like MCW) to take duties without being blocked from regular exams.
        const currentLoad = t.totalInvigilationTime + subTime
-       const generalDutyPenalty = currentLoad > 0 ? (t.generalDuty || 0) * 60 : 0
-       
-       let score = (currentLoad + generalDutyPenalty + lessonCount * 55) / 120
+       const totalSpecialDuties = (t.fiDuty || 0) + (t.sbDuty || 0) + (t.guidanceDuty || 0)
+       const dutyPenalty = currentLoad > 0 ? totalSpecialDuties * 60 : 0
+
+       let score = (currentLoad + dutyPenalty + lessonCount * 55) / 120
 
        if (preferedTeachers && preferedTeachers.includes(t.teacher)) {
          score = Math.round(score * PREFERED_RATE)
@@ -174,8 +184,9 @@ function getOrderedAvailableTeachers(
        }
        return score
   }
+
   // Sorting Priorities
-  
+
   // Return the index in preferedTeachers to maintain user's requested order (PIC first)
   const isPreferred = (t) => {
     if (!preferedTeachers || preferedTeachers.length === 0) return 999;
@@ -183,10 +194,26 @@ function getOrderedAvailableTeachers(
     return idx === -1 ? 999 : idx;
   };
 
-  if ([...GENERAL_DUTIES, 'FI'].includes(classlevel)) {
+  if (exam.isFI || classlevel === 'FI') {
     return _.orderBy(
       candidates,
-      [isPreferred, 'generalDuty', sortFunction, 'occurrence'],
+      [isPreferred, 'fiDuty', sortFunction, 'occurrence'],
+      ['asc', 'asc', 'asc', 'asc']
+    )
+  }
+
+  if (exam.isStandby || classlevel === 'SB') {
+    return _.orderBy(
+      candidates,
+      [isPreferred, 'sbDuty', sortFunction, 'occurrence'],
+      ['asc', 'asc', 'asc', 'asc']
+    )
+  }
+
+  if (exam.isGuidance || exam.isMorning || classlevel === 'G') {
+    return _.orderBy(
+      candidates,
+      [isPreferred, 'guidanceDuty', sortFunction, 'occurrence'],
       ['asc', 'asc', 'asc', 'asc']
     )
   }
@@ -202,15 +229,14 @@ function getOrderedAvailableTeachers(
   return _.orderBy(candidates, [
     isPreferred,
     sortFunction,
-    'occurrence',
-    'generalDuty'
-  ], ['asc', 'asc', 'asc', 'asc'])
-}
+    'occurrence'
+  ], ['asc', 'asc', 'asc'])
+  }
 
-/**
- * Calculates final stats for all teachers based on assignments.
- */
-function calculateTeacherStats(teachers, assignedExaminations) {
+  /**
+  * Calculates final stats for all teachers based on assignments.
+  */
+  function calculateTeacherStats(teachers, assignedExaminations) {
   let currentTeachers = teachers.map(t => ({...t, exams: []}))
 
   assignedExaminations.forEach(exam => {
@@ -221,13 +247,13 @@ function calculateTeacherStats(teachers, assignedExaminations) {
        if (teacherIndex !== -1) {
          currentTeachers[teacherIndex] = assignExamToTeacher(currentTeachers[teacherIndex], exam)
        } else {
-         const newT = assignExamToTeacher({ teacher: invigilator, exams: [], totalInvigilationTime: 0, generalDuty: 0, occurrence: 0 }, exam)
+         const newT = assignExamToTeacher({ teacher: invigilator, exams: [], totalInvigilationTime: 0, fiDuty: 0, sbDuty: 0, guidanceDuty: 0, occurrence: 0 }, exam)
          currentTeachers.push(newT)
        }
     })
   })
   return currentTeachers
-}
+  }
 
 module.exports = {
   assignExamToTeacher,
