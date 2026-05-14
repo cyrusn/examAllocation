@@ -166,7 +166,7 @@ function getOrderedAvailableTeachers(
 
   // Sorting Logic
   const sortFunction = (t) => {
-       const lessonCount = getPeriodLessonCount(t.teacher, exam, unavailableArrays)
+       const lessonCount = getDayLessonsCount(t.teacher, exam, unavailableArrays)
        const effectiveSubNumber = t.ignoreSubstitutionNumber ? 0 : (t.originalSubstitutionNumber || 0)
        const subTime = effectiveSubNumber * 55
 
