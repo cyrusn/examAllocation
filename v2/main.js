@@ -165,7 +165,7 @@ const main = async () => {
     'utf8'
   )
 
-  await printStat(finalAssignedExaminations)
+  await printStat(finalAssignedExaminations, unavailableArrays)
   await printView(finalAssignedExaminations, teachers)
   await printSen(finalAssignedExaminations)
   await printTeacherView(finalAssignedExaminations)
