@@ -163,7 +163,7 @@ function getOrderedAvailableTeachers(
        const assignedOnDay = getTeacherAssignedExamsOnSameDay(t.teacher, exam, assignedExaminations)
        if (assignedOnDay.length > 2) return false // Limit: >2 exams/day
 
-       if (dailyLessonLimit === undefined && lessonsOnDay > 4) return false // Default soft limit: >4 lessons/day
+       if (dailyLessonLimit === undefined && lessonsOnDay >= 4) return false // Default soft limit: >= 4 lessons/day
     }
 
     return true
