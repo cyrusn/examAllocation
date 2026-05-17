@@ -51,11 +51,31 @@ function performGreedyAllocation(examinationsList, teachers, unavailableArrays, 
   // Update teachers with pre-assigned exams
   initializeAssignments(teachers, assignedExaminations)
 
+  // Helper to recursively find all downstream bound exams
+  function getAllBindedExams(examId, allExams, visited = new Set()) {
+    if (visited.has(examId)) return []
+    visited.add(examId)
+    
+    const directFollowers = allExams.filter(e => e.binding && e.binding.includes(examId))
+    let allFollowers = [...directFollowers]
+    
+    for (const follower of directFollowers) {
+      allFollowers = allFollowers.concat(getAllBindedExams(follower.id, allExams, visited))
+    }
+    
+    return _.uniqBy(allFollowers, 'id')
+  }
+
   for (const exam of examinationsList) {
     processedCount++
     progressLog(processedCount / totalExams)
 
-    const bindedExams = examinationsList.filter(e => e.binding.includes(exam.id))
+    // Skip exams that are followers (they should only be processed when their master is processed)
+    if (exam.binding && exam.binding.length > 0) {
+       continue
+    }
+
+    const bindedExams = getAllBindedExams(exam.id, examinationsList)
     
     bindedExams.forEach(follower => {
       follower.requiredInvigilators = exam.requiredInvigilators
@@ -69,7 +89,11 @@ function performGreedyAllocation(examinationsList, teachers, unavailableArrays, 
     })
 
     const currentInvigilatorCount = exam.invigilators.length
-    if (currentInvigilatorCount >= exam.requiredInvigilators) continue
+    if (currentInvigilatorCount >= exam.requiredInvigilators) {
+       // Ensure bound exams also get updated if the master is fully pre-assigned
+       applyAssignments(teachers, bindedExams, exam.invigilators)
+       continue
+    }
 
     const candidates = findCandidatesWithRetry(teachers, unavailableArrays, assignedExaminations, exam, bindedExams, globalOptions)
     const needed = exam.requiredInvigilators - currentInvigilatorCount
