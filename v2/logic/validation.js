@@ -13,9 +13,10 @@ function validateAssignments(assignedExaminations, unavailableArrays, ignoredSlo
 
     invigilators.forEach(invigilator => {
        if (invigilator === 'UNASSIGNED') return
+       const cleanInvigilator = invigilator.trim()
 
        unavailableArrays.forEach(unavailable => {
-         if (!unavailable.teachers.includes(invigilator)) return
+         if (!unavailable.teachers.some(initial => initial.trim() === cleanInvigilator)) return
          
          unavailable.slots.forEach(slot => {
             const unavailableInterval = getIntervalBySlot(slot)
