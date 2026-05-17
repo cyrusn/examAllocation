@@ -59,8 +59,10 @@ function performGreedyAllocation(examinationsList, teachers, unavailableArrays, 
     
     bindedExams.forEach(follower => {
       follower.requiredInvigilators = exam.requiredInvigilators
+      
+      // Inherit pre-assignments safely
       exam.invigilators.forEach(inv => {
-        if (!follower.invigilators.includes(inv)) {
+        if (!follower.invigilators.includes(inv) && inv !== 'UNASSIGNED') {
           follower.invigilators.push(inv)
         }
       })

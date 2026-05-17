@@ -131,7 +131,7 @@ function getOrderedAvailableTeachers(
   exam,
   options = { strict: true }
 ) {
-  const { classlevel, classcode, preferedTeachers, dailyLessonLimit = 4 } = exam
+  const { classlevel, classcode, preferedTeachers, dailyLessonLimit = 5 } = exam
   const examInterval = getExamInterval(exam)
   const isSen = /\d{1}S(R|T)?/.test(classcode)
   const { strict } = options
@@ -140,8 +140,17 @@ function getOrderedAvailableTeachers(
     // 1. Hard Constraints (Physical Impossibilities)
     if (t.isSkip) return false
     
-    // Check Unavailable Slots
+    // Check Unavailable Slots for the main exam
     if (checkOverlapWithUnavailable(t.teacher, examInterval, unavailableArrays)) return false
+
+    // Check Unavailable Slots for ALL bound exams (Followers)
+    // If a teacher takes the master, they MUST be available for the followers too
+    const boundExams = assignedExaminations.filter(e => e.binding && e.binding.includes(exam.id))
+    for (const bExam of boundExams) {
+       const bInterval = getExamInterval(bExam)
+       if (checkOverlapWithUnavailable(t.teacher, bInterval, unavailableArrays)) return false
+       if (isTeacherAssignedTimeConflict(t.teacher, bInterval, assignedExaminations)) return false
+    }
 
     // Check Time Conflicts with Assigned Exams
     if (isTeacherAssignedTimeConflict(t.teacher, examInterval, assignedExaminations)) return false
@@ -150,7 +159,7 @@ function getOrderedAvailableTeachers(
     const isTaOrDc = [...TEACHER_ASSISTANTS, ...DC_TEAM_MEMBERS].includes(t.teacher)
     if (GENERAL_DUTIES.includes(classlevel) && isTaOrDc) return false
 
-    // Daily Lesson Hard Limit (Row configured, defaults to 4)
+    // Daily Lesson Hard Limit (Row configured, defaults to 5)
     const lessonsOnDay = getDayLessonsCount(t.teacher, exam, unavailableArrays)
     if (lessonsOnDay >= dailyLessonLimit) {
       return false
