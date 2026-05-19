@@ -12,5 +12,5 @@ module.exports = {
   PREFERED_RATE: 0.5,
   TIMEZONE: 'Asia/Hong_Kong',
   OUTPUT_FILE_PATH: './out',
-  VERSION: 'v2.4.1'
+  VERSION: 'v0.0.0'
 }

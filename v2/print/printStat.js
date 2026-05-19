@@ -22,7 +22,7 @@ async function printStat(assignedExaminations, unavailableArrays = [], options =
     activeExamDates.add(examDate)
   })
 
-  const limit = options.dailyLessonLimit !== undefined ? options.dailyLessonLimit : 4
+  const limit = options.dailyLessonLimit !== undefined ? options.dailyLessonLimit : 5
 
   // Initial mapping
   let teachers = rawTeachers.map((t) => {
@@ -65,9 +65,9 @@ async function printStat(assignedExaminations, unavailableArrays = [], options =
       
       // Check against the lowest dailyLessonLimit of all exams occurring on that specific date
       const examsOnDate = assignedExaminations.filter(e => e.startDateTime.startsWith(dateStr))
-      let limitForDay = 4 // Default fallback
+      let limitForDay = 5 // Default fallback
       if (examsOnDate.length > 0) {
-        limitForDay = Math.min(...examsOnDate.map(e => parseInt(e.dailyLessonLimit) || 4))
+        limitForDay = Math.min(...examsOnDate.map(e => parseInt(e.dailyLessonLimit) || 5))
       }
 
       if (lessonsOnDay >= limitForDay) {
@@ -112,10 +112,10 @@ async function printStat(assignedExaminations, unavailableArrays = [], options =
         'teacher',
         'originalSubstitutionNumber',
         'assignedPeriods',
-        'Balance (Net)',
+        'Balance (Net)\n(lessons)',
         'Period Lessons',
-        'Blocked by Lessons',
-        'totalInvigilationTime',
+        'Blocked by Lessons\n(days)',
+        'totalInvigilationTime\n(minutes)',
         'occurrence',
         'fiDuty',
         'sbDuty',

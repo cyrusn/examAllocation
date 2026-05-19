@@ -9,8 +9,9 @@ const { getExamInterval, getIntervalBySlot } = require('../utils')
  * @returns {boolean}
  */
 function checkOverlapWithUnavailable(teacherId, examInterval, unavailableArrays) {
+  const cleanTeacherId = (teacherId || '').trim()
   return unavailableArrays.some(unavailable => {
-    if (!unavailable.teachers.includes(teacherId)) return false
+    if (!unavailable.teachers.some(initial => initial.trim() === cleanTeacherId)) return false
     return unavailable.slots.some(slot => 
       examInterval.overlaps(getIntervalBySlot(slot))
     )

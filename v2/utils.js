@@ -24,10 +24,6 @@ function getIntervalBySlot(slot) {
  * @returns {number}
  */
 function getSenDuration(exam) {
-  // Logic from original code:
-  // return exam.title.toUpperCase().replace('.', '').includes('VA')
-  //   ? Math.ceil(exam.duration * 1.05)
-  //   : Math.ceil(exam.duration * 1.25)
   return Math.ceil(exam.duration * 1.25)
 }
 
@@ -49,13 +45,6 @@ function getExamInterval(exam) {
   const isF6 = classcode && classcode.includes('6')
   const buffer = isF6 ? F6_BUFFER_TIME : BUFFER_TIME
   
-  // Logic for General Duties vs Normal Exams seems identical in the original code regarding calculation
-  // but explicitly separated.
-  // Original:
-  // if (GENERAL_DUTIES.includes(classlevel)) { ... same math ... }
-  // return ... same math ...
-  
-  // We can simplify:
   const totalMinutes = examDuration + (buffer * 2)
   
   return Interval.after(

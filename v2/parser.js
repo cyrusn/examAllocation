@@ -175,10 +175,10 @@ function parseExaminations(rawExaminations, options = {}) {
             assignedPreferedTeachers = preferedTeachers[index].replaceAll(/\n|\s|\r/g, '').split('|').filter(Boolean)
           }
 
-          // Parse Daily Lesson Limit from row (default to 4 if missing or invalid)
+          // Parse Daily Lesson Limit from row (default to 5 if missing or invalid)
           let dailyLessonLimit = parseInt(exam.dailyLessonLimit)
           if (isNaN(dailyLessonLimit)) {
-            dailyLessonLimit = 4
+            dailyLessonLimit = 5
           }
 
           prev.push({
