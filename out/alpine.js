@@ -8,6 +8,20 @@ const groupBy = function (xs, key) {
   }, {})
 }
 
+const TEACHER_ASSISTANTS = ['OLN', 'WHS', 'WYY', 'EC', 'KYY', 'CKL', 'LS']
+
+const formatInvigilators = (invigilators) => {
+  if (!invigilators || invigilators.length === 0) return ''
+  if (invigilators.length <= 1) return invigilators.join(', ')
+
+  let picIndex = invigilators.findIndex(inv => !TEACHER_ASSISTANTS.includes(inv))
+  if (picIndex === -1) picIndex = 0
+
+  const formatted = [...invigilators]
+  const [pic] = formatted.splice(picIndex, 1)
+  return [`*${pic}`, ...formatted].join(', ')
+}
+
 document.addEventListener('alpine:init', () => {
   Alpine.data('documentData', () => ({
     isLightTheme: false,
@@ -100,7 +114,7 @@ document.addEventListener('alpine:init', () => {
   <td>${title}</td>
   <td>${location || ''}</td> <td>${duration}mins</td>
   <td width='40%'> 
-<span class='has-text-info'> ${invigilators.join(', ')}</span>
+<span class='has-text-info'> ${formatInvigilators(invigilators)}</span>
   </td>`
           })
           return `<td rowspan="${timeRowspan}">${time.slice(0, 5)}

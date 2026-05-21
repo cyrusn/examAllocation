@@ -1,7 +1,7 @@
 const _ = require('lodash')
 const { DateTime } = require('luxon')
 const { GENERAL_DUTIES, VERSION } = require('../constants')
-const { getSenDuration } = require('../utils')
+const { getSenDuration, formatInvigilators } = require('../utils')
 const { appendRows, batchClearData, clearSheetFormatting, autoResizeRows, setWrapText } = require('../googleSheet')
 
 const orderKeys = ['S1', 'S2', 'S1/S2', 'S3', 'S4', 'S5', 'S6', 'FI', 'G', 'SB']
@@ -187,7 +187,7 @@ async function printSen(assignedExaminations) {
                 exams
                   .map(
                     ({ location, invigilators }) =>
-                      `${location}\n${invigilators.join(', ')}`
+                      `${location}\n${formatInvigilators(invigilators)}`
                   )
                   .join('\n')
               )

@@ -2,7 +2,8 @@ const { DateTime, Duration, Interval } = require('luxon')
 const {
   GENERAL_DUTIES,
   BUFFER_TIME,
-  F6_BUFFER_TIME
+  F6_BUFFER_TIME,
+  TEACHER_ASSISTANTS
 } = require('./constants')
 
 /**
@@ -25,6 +26,39 @@ function getIntervalBySlot(slot) {
  */
 function getSenDuration(exam) {
   return Math.ceil(exam.duration * 1.25)
+}
+
+/**
+ * Returns the lead invigilator (PIC) from a list of invigilators.
+ * Teacher assistants have lower priority.
+ * @param {string[]} invigilators
+ * @returns {string|null}
+ */
+function getPic(invigilators) {
+  if (!invigilators || invigilators.length === 0) return null
+  if (invigilators.length === 1) return invigilators[0]
+
+  let picIndex = invigilators.findIndex(inv => !TEACHER_ASSISTANTS.includes(inv))
+  if (picIndex === -1) {
+    picIndex = 0
+  }
+  return invigilators[picIndex]
+}
+
+/**
+ * Formats a list of invigilators, marking one with an asterisk if there are multiple.
+ * Teacher assistants have lower priority for being the lead invigilator (*).
+ * @param {string[]} invigilators
+ * @returns {string}
+ */
+function formatInvigilators(invigilators) {
+  if (!invigilators || invigilators.length === 0) return ''
+  if (invigilators.length <= 1) return invigilators.join(', ')
+
+  const pic = getPic(invigilators)
+  const others = invigilators.filter(inv => inv !== pic)
+  
+  return [`*${pic}`, ...others].join(', ')
 }
 
 /**
@@ -74,5 +108,7 @@ module.exports = {
   getSenDuration,
   getExamInterval,
   progressLog,
-  parseList
+  parseList,
+  formatInvigilators,
+  getPic
 }

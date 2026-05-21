@@ -1,6 +1,6 @@
 const _ = require('lodash')
 const { DateTime } = require('luxon')
-const { getSenDuration } = require('../utils')
+const { getSenDuration, formatInvigilators, getPic } = require('../utils')
 const { appendRows, batchClearData, clearSheetFormatting, autoResizeRows, setWrapText } = require('../googleSheet')
 
 async function printTeacherView(assignedExaminations) {
@@ -89,12 +89,21 @@ async function printTeacherView(assignedExaminations) {
           classlevel,
           endTime,
           location,
-          mDuration
+          mDuration,
+          invigilators
         } = c
+
+        let displayInvigilator = invigilator
+        if (invigilators && invigilators.length > 1) {
+          const pic = getPic(invigilators)
+          if (pic === invigilator) {
+            displayInvigilator = `*${invigilator}`
+          }
+        }
 
         excelPrintView.push([
           date,
-          invigilator,
+          displayInvigilator,
           startTime,
           endTime,
           classlevel,
