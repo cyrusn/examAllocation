@@ -103,12 +103,18 @@ function progressLog(progress) {
 
 const parseList = (str) => (str || '').toString().split(/,|\n/).map(s => s.trim()).filter(Boolean)
 
+const parsePositionalList = (str) => {
+  if (!str || !str.toString().trim()) return []
+  return str.toString().split(/,|\n/).map(s => s.trim())
+}
+
 module.exports = {
   getIntervalBySlot,
   getSenDuration,
   getExamInterval,
   progressLog,
   parseList,
+  parsePositionalList,
   formatInvigilators,
   getPic
 }

@@ -1,5 +1,5 @@
 const _ = require('lodash')
-const { parseList } = require('./utils')
+const { parseList, parsePositionalList } = require('./utils')
 const { INVIGILATOR_RULES, DEFAULT_INVIGILATOR_COUNT } = require('./config')
 
 /**
@@ -51,9 +51,9 @@ function parseExaminations(rawExaminations, options = {}) {
     .reduce((prev, exam) => {
       const { binding, id, session, classlevel, title, startDateTime } = exam
       
-      const invigilators = parseList(exam.invigilators)
-      const preferedTeachers = parseList(exam.preferedTeachers)
-      const paperInChargesList = parseList(exam.paperInCharges)
+      const invigilators = parsePositionalList(exam.invigilators)
+      const preferedTeachers = parsePositionalList(exam.preferedTeachers)
+      const paperInChargesList = parsePositionalList(exam.paperInCharges)
       
       const titleUpper = (exam.title || '').toUpperCase()
       const isStandby = titleUpper.includes('STANDBY') || exam.classlevel === 'SB'
@@ -87,7 +87,7 @@ function parseExaminations(rawExaminations, options = {}) {
       const startDateTimes = parseList(String(exam.startDateTime).replace(/\n/g, ',')).filter(Boolean)
       const ids = parseList(String(exam.id).replace(/\n/g, ',')).filter(Boolean)
       const classcodes = parseList(exam.classcodes).filter(Boolean)
-      const locations = parseList(exam.locations || exam.location)
+      const locations = parsePositionalList(exam.locations || exam.location)
 
       startDateTimes.forEach((startDateTime, dateIndex) => {
         classcodes.forEach((classcode, index) => {
@@ -144,7 +144,7 @@ function parseExaminations(rawExaminations, options = {}) {
           }
 
           // Invigilator Count Logic
-          const reqInvList = parseList(String(exam.requiredInvigilators))
+          const reqInvList = parsePositionalList(String(exam.requiredInvigilators))
           let requiredInvigilators = parseInt(reqInvList[index])
 
           if (!requiredInvigilators) {
