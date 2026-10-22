@@ -23,7 +23,8 @@ async function printSen(assignedExaminations) {
         startDateTime,
         duration,
         paperInCharges,
-        location
+        location,
+        preferedTeachers
       } = assignedExamination
       const invigilators = _.uniq(assignedExamination.invigilators)
 
@@ -46,7 +47,7 @@ async function printSen(assignedExaminations) {
         title,
         paperInCharges,
         classcodes: [
-          { startDateTime, classcode, location, invigilators, time, duration }
+          { startDateTime, classcode, location, invigilators, time, duration, preferedTeachers }
         ]
       }
       
@@ -74,6 +75,7 @@ async function printSen(assignedExaminations) {
           classcode,
           location,
           invigilators,
+          preferedTeachers,
           time,
           duration
         })
@@ -186,8 +188,8 @@ async function printSen(assignedExaminations) {
               ...specialExams.map((exams) =>
                 exams
                   .map(
-                    ({ location, invigilators }) =>
-                      `${location}\n${formatInvigilators(invigilators)}`
+                    ({ location, invigilators, preferedTeachers }) =>
+                      `${location}\n${formatInvigilators(invigilators, preferedTeachers)}`
                   )
                   .join('\n')
               )

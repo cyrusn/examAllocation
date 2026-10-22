@@ -25,7 +25,8 @@ async function printView(assignedExaminations, teachers = []) {
         startDateTime,
         duration,
         paperInCharges,
-        location
+        location,
+        preferedTeachers
       } = assignedExamination
 
       const invigilators = _.uniq(assignedExamination.invigilators)
@@ -46,7 +47,7 @@ async function printView(assignedExaminations, teachers = []) {
         title,
         paperInCharges,
         classcodes: [
-          { id, startDateTime, classcode, location, invigilators, time, duration }
+          { id, startDateTime, classcode, location, invigilators, time, duration, preferedTeachers }
         ]
       }
       if (!_.has(prev, [date])) {
@@ -75,6 +76,7 @@ async function printView(assignedExaminations, teachers = []) {
           classcode,
           location,
           invigilators,
+          preferedTeachers,
           time,
           duration
         })
@@ -158,8 +160,8 @@ async function printView(assignedExaminations, teachers = []) {
                     }
                   ])
                   .map(
-                    ({ classcode, invigilators }) =>
-                      `${classcode}\n${formatInvigilators(invigilators)}`
+                    ({ classcode, invigilators, preferedTeachers }) =>
+                      `${classcode}\n${formatInvigilators(invigilators, preferedTeachers)}`
                   )
                   .value() || [])
               ])
@@ -190,9 +192,9 @@ async function printView(assignedExaminations, teachers = []) {
 
             if (hall) {
               _.pull(classcodes, hall)
-              const { classcode, invigilators, location } = hall
+              const { classcode, invigilators, location, preferedTeachers } = hall
               // If it's a grouped class but not in the standard hallGroup, make sure we still print its actual location
-              hallString = `${classcode} (${location || ''})\n${formatInvigilators(invigilators)}`
+              hallString = `${classcode} (${location || ''})\n${formatInvigilators(invigilators, preferedTeachers)}`
             }
 
             const endTime = DateTime.fromISO(startDateTime)
@@ -247,8 +249,8 @@ async function printView(assignedExaminations, teachers = []) {
               hallString,
               ...modifiyedClasscodes.map((exam) => {
                 if (!exam) return ''
-                const { classcode, invigilators, location } = exam
-                return `${classcode} (${location ? location + ')\n' : ''}${formatInvigilators(invigilators)}`
+                const { classcode, invigilators, location, preferedTeachers } = exam
+                return `${classcode} (${location ? location + ')\n' : ''}${formatInvigilators(invigilators, preferedTeachers)}`
               })
             ])
           })

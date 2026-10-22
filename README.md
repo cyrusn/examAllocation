@@ -7,6 +7,20 @@
   - Higher lesson number first
   - TA helps SEN more
 
+## Teacher Configuration
+
+Copy the teacher configuration from `.env.example` into your local `.env` file. Teacher IDs are comma-separated:
+
+```env
+DC_TEAM_MEMBERS=JT,MKC,HYH,WTN,CSC,OSL,KYL,TCL
+TEACHER_ASSISTANTS=OLN,WHS,WYY,EC,KYY,CKL,LS
+PREFERED_RATE=1
+```
+
+`PREFERED_RATE` is a numeric multiplier for preferred teachers' workload scores and defaults to `1` when unset. The spelling `PREFERED_RATE` matches the existing configuration name.
+
+After allocation, each event's final invigilator list is reordered to put assigned preferred teachers first in the order listed in `preferedTeachers`, followed by other assigned teachers in their existing order. The first assigned preferred teacher is marked as the PIC (`*`); if no preferred teacher is assigned, the existing PIC rule is used. This only changes list/display order: it does not move teachers between exams or change who is assigned.
+
 ## Binding Rules
 
 The system automatically groups certain classes to share invigilators, but you can override this behavior using the `binding` column in the `examinations` sheet.
